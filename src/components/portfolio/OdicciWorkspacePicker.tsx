@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, ChevronDown, Check, X, Sun, Moon, Upload } from "lucide-react";
+import { Plus, Search, ChevronDown, Check, X, Sun, Moon, Upload, HelpCircle, AlertTriangle, Info } from "lucide-react";
 import { useState } from "react";
+import odicciBadge from "@/assets/odicci-badge.png";
 
 /**
  * OdicciWorkspacePicker — pixel-faithful rebuild of the "Choose a workspace"
@@ -212,14 +213,7 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
 
         {/* Odicci logo — top center */}
         <div className="absolute top-[6%] left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-          <div
-            className="w-5 h-5"
-            style={{
-              background: ACCENT,
-              clipPath:
-                "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
-            }}
-          />
+          <img src={odicciBadge} alt="" className="w-5 h-5" />
           <span className={`text-[22px] font-semibold tracking-tight transition-colors duration-300 ${textMain}`}>
             odicci
           </span>
@@ -407,6 +401,19 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
         </div>
         )}
 
+        {/* Create workspace — step 2/7 */}
+        {step === "create" && (
+          <CreateWorkspacePanel
+            isDark={isDark}
+            textMain={textMain}
+            textSub={textSub}
+            companyName={companyName}
+            setCompanyName={setCompanyName}
+            onBack={() => setStep("picker")}
+            onNext={onNext}
+          />
+        )}
+
         {/* Integrations modal */}
         <AnimatePresence>
           {modalOpen && (
@@ -589,7 +596,6 @@ function LockGlyph() {
 
 interface CreateWorkspacePanelProps {
   isDark: boolean;
-  panel: string;
   textMain: string;
   textSub: string;
   textMuted: string;
@@ -599,201 +605,245 @@ interface CreateWorkspacePanelProps {
   onNext?: () => void;
 }
 
+/**
+ * CreateWorkspacePanel — step 2/7 of onboarding. Rebuilt from the Figma
+ * "Create Workspace_Fallback_Error" frame: a two-column layout pairing the
+ * empty-state "Odicci workspaces" window (left) with the workspace creation
+ * form, including the company-name validation error state shown in the design.
+ */
 function CreateWorkspacePanel({
   isDark,
-  panel,
   textMain,
   textSub,
-  textMuted,
   companyName,
   setCompanyName,
   onBack,
   onNext,
 }: CreateWorkspacePanelProps) {
+  const [timezone, setTimezone] = useState("Europe/London (GMT/BST)");
+  const [companySize, setCompanySize] = useState("");
+  const [hearAbout, setHearAbout] = useState("");
+  const [useLogo, setUseLogo] = useState(true);
+  const [touched, setTouched] = useState(false);
+
+  const showError = touched && companyName.trim().length === 0;
+  const initial = (companyName.trim()[0] || "W").toUpperCase();
+
   const inputBase =
-    "w-full h-11 rounded-lg px-3 text-[13px] outline-none transition-colors duration-300";
+    "w-full rounded-[10px] px-3 py-3 text-[14px] outline-none transition-colors duration-300";
   const inputTheme = isDark
-    ? "border border-white/20 bg-white/[0.06] text-white placeholder-white/40"
-    : "border border-zinc-900/15 bg-white/70 text-zinc-900 placeholder-zinc-500";
+    ? "bg-white/20 text-white placeholder-white/50"
+    : "bg-white/70 border border-zinc-900/10 text-zinc-900 placeholder-zinc-500";
+  const helpIconClass = isDark ? "text-white/40" : "text-zinc-400";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[72%]"
+      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[1100px] max-h-[86%]"
     >
-      <div
-        className={`rounded-[24px] ${panel} backdrop-blur-2xl shadow-2xl shadow-black/20 p-5 md:p-6 transition-colors duration-300 max-h-[80vh] overflow-y-auto`}
-      >
-        {/* Header */}
-        <div className="mb-4">
-          <h2
-            className={`text-[20px] md:text-[24px] font-semibold tracking-tight leading-tight transition-colors duration-300 ${textMain}`}
-          >
-            Create your workspace
-          </h2>
-          <p
-            className={`text-[12px] md:text-[13px] mt-1 transition-colors duration-300 ${textSub}`}
-          >
-            Set up your workspace details and get started
-          </p>
-        </div>
-
-        {/* 50/50 grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* LEFT — Live preview */}
-          <div
-            className={`relative rounded-2xl overflow-hidden transition-colors duration-300 flex flex-col ${
-              isDark ? "border border-white/15" : "border border-zinc-900/10"
-            } bg-white/40 backdrop-blur-md`}
-          >
-            <div className="px-4 py-2.5 flex items-center gap-1.5 border-b border-zinc-200/60">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
-              <span className="ml-3 text-[10px] text-zinc-500">Live preview</span>
-            </div>
+      <div className="flex flex-col lg:flex-row items-stretch gap-5 lg:gap-8 h-full min-h-0">
+        {/* LEFT — "Odicci workspaces" window, empty/fallback state */}
+        <div className="hidden lg:flex flex-col w-[38%] shrink-0 rounded-xl overflow-hidden border border-[#205D9E]/50 shadow-xl shadow-black/20 h-full max-h-[520px]">
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white shrink-0">
+            <div className="w-6 h-6 rounded bg-zinc-200 shrink-0" />
+            <span className="flex-1 text-center text-[13px] text-zinc-900 truncate">Odicci workspaces</span>
             <div
-              className="relative flex-1 bg-transparent"
-              style={{
-                backgroundImage:
-                  "linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)",
-                backgroundSize: "20px 20px",
-              }}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[12px] shrink-0"
+              style={{ background: "#FF5126" }}
             >
-              <div className="absolute left-4 top-4 right-4 flex items-center gap-2">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-bold shadow-md shrink-0"
-                  style={{ background: ACCENT }}
-                >
-                  UA
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[12px] font-semibold text-zinc-900 truncate">
-                    {companyName || "Your Workspace"}
-                  </div>
-                  <div className="text-[9px] text-zinc-500">Workspace</div>
-                </div>
-              </div>
-              <div
-                className="absolute left-4 right-4 top-[68px] h-20 rounded-xl overflow-hidden border border-white/40 bg-white/10 backdrop-blur-md"
-              >
-                <div className="p-2.5 text-zinc-800">
-                  <div className="text-[10px] opacity-70">Workspace</div>
-                  <div className="text-[13px] font-semibold mt-0.5 truncate">
-                    {companyName || "Untitled"}
-                  </div>
-                </div>
-              </div>
+              A
             </div>
           </div>
+          <div className="flex-1 min-h-0 flex items-center justify-center p-8 bg-[#F9FAFB]/80">
+            <div className="w-full h-full rounded-xl bg-white flex items-center justify-center">
+              <FigmaLinkIcon className="w-9 h-9 text-zinc-900" />
+            </div>
+          </div>
+        </div>
 
-          {/* RIGHT — Form */}
-          <div className="flex flex-col gap-3.5">
+        {/* Divider */}
+        <div className="hidden lg:block w-px self-stretch bg-gradient-to-b from-white/5 via-white/50 to-white/5" />
+
+        {/* RIGHT — Create workspace form */}
+        <div
+          className={`flex-1 min-w-0 rounded-3xl border p-5 md:p-6 flex flex-col gap-6 md:gap-8 backdrop-blur-sm h-full overflow-y-auto transition-colors duration-300 ${
+            isDark ? "border-white bg-[rgba(0,50,90,0.20)]" : "border-white/70 bg-white/60"
+          }`}
+        >
+          {/* Header */}
+          <div className="flex flex-col gap-0.5">
+            <h2 className={`text-[22px] md:text-[26px] font-normal leading-tight transition-colors duration-300 ${textMain}`}>
+              Create your workspace
+            </h2>
+            <p className={`text-[14px] md:text-[16px] transition-colors duration-300 ${isDark ? "text-[#A3AEBB]" : textSub}`}>
+              Set up your workspace to get started with Odicci
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-5 md:gap-6">
             {/* Logo uploader */}
-            <div className="flex items-center gap-3">
-              <div
-                className="w-14 h-14 rounded-full flex items-center justify-center text-white text-[15px] font-bold shadow-md shrink-0"
-                style={{ background: ACCENT }}
-              >
-                UA
+            <div className="flex flex-col gap-2">
+              <label className={`text-[12px] transition-colors duration-300 ${textMain}`}>Upload your company logo</label>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-12 h-12 md:w-[52px] md:h-[52px] rounded-full flex items-center justify-center text-white text-[18px] shrink-0"
+                  style={{ background: "linear-gradient(135deg, #FF6900 0%, #F54900 100%)" }}
+                >
+                  {initial}
+                </div>
+                <button
+                  type="button"
+                  className="flex-1 h-10 md:h-11 rounded-lg border border-zinc-200 bg-white text-zinc-900 text-[13px] md:text-[14px] flex items-center justify-center gap-2 hover:bg-zinc-50 transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5 text-zinc-500" /> Upload Image
+                </button>
+                <button
+                  type="button"
+                  className="h-10 md:h-11 px-3.5 rounded-lg text-[13px] md:text-[14px] shrink-0 transition-colors"
+                  style={{ background: "#E2E6EA", color: "#7A838C" }}
+                >
+                  Remove
+                </button>
               </div>
+              <p className={`text-[11px] transition-colors duration-300 ${isDark ? "text-white/60" : "text-zinc-500"}`}>
+                *Png, *.jpeg files up to 10MB at least 400px by 400px
+              </p>
+
+              {/* Use this logo checkbox */}
               <button
                 type="button"
-                className={`h-9 px-3.5 rounded-lg text-[12px] font-medium flex items-center justify-center gap-1.5 transition-colors duration-300 flex-1 ${
-                  isDark
-                    ? "border border-white/25 bg-white/[0.08] text-white hover:bg-white/[0.14]"
-                    : "border border-zinc-900/15 bg-white/70 text-zinc-900 hover:bg-white"
-                }`}
+                onClick={() => setUseLogo((v) => !v)}
+                className="flex items-center gap-2 mt-1 text-left"
               >
-                <Upload className="w-3.5 h-3.5" /> Upload image
+                <span
+                  className={`w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${
+                    useLogo ? "border-transparent" : isDark ? "border-white/40" : "border-zinc-400"
+                  }`}
+                  style={useLogo ? { background: "#FF5126" } : undefined}
+                >
+                  {useLogo && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                </span>
+                <span className={`text-[12px] transition-colors duration-300 ${textMain}`}>
+                  Use this logo for your experiences
+                </span>
               </button>
             </div>
 
             {/* Company Name */}
-            <div className="flex flex-col gap-1.5">
-              <label className={`text-[12px] font-medium transition-colors duration-300 ${textMain}`}>
-                Company Name
-              </label>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <label className={`text-[12px] flex-1 transition-colors duration-300 ${textMain}`}>Company Name</label>
+                <HelpCircle className={`w-3.5 h-3.5 ${helpIconClass}`} />
+              </div>
               <input
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
+                onBlur={() => setTouched(true)}
                 placeholder="Enter your company name"
                 className={`${inputBase} ${inputTheme}`}
               />
+              {showError && (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <AlertTriangle className="w-3 h-3 shrink-0" style={{ color: "#FFB0B0" }} />
+                  <span className="text-[12px]" style={{ color: "#FFB0B0" }}>
+                    You must add company name
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Industry + Company Size row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className={`text-[12px] font-medium transition-colors duration-300 ${textMain}`}>
-                  Industry Name
-                </label>
-                <button
-                  type="button"
-                  className={`${inputBase} ${inputTheme} flex items-center justify-between`}
-                >
-                  <span className={isDark ? "text-white/50" : "text-zinc-500"}>
-                    Select industry
-                  </span>
-                  <ChevronDown className="w-4 h-4 opacity-60" />
-                </button>
+            {/* Timezone */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className={`text-[12px] transition-colors duration-300 ${textMain}`}>Timezone</label>
+                <HelpCircle className={`w-3.5 h-3.5 ${helpIconClass}`} />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={`text-[12px] font-medium transition-colors duration-300 ${textMain}`}>
-                  Company Size
-                </label>
-                <button
-                  type="button"
-                  className={`${inputBase} ${inputTheme} flex items-center justify-between`}
-                >
-                  <span className={isDark ? "text-white/50" : "text-zinc-500"}>
-                    Select size
-                  </span>
-                  <ChevronDown className="w-4 h-4 opacity-60" />
-                </button>
+              <div className={`flex items-center gap-2 rounded-[10px] px-3 py-3 ${inputTheme}`}>
+                <span className="flex-1 text-[14px] truncate">{timezone}</span>
+                <ChevronDown className="w-4 h-4 opacity-60 shrink-0" />
               </div>
             </div>
 
-            {/* Textarea */}
-            <div className="flex flex-col gap-1.5">
-              <label className={`text-[12px] font-medium transition-colors duration-300 ${textMain}`}>
+            {/* Company Size */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className={`text-[12px] transition-colors duration-300 ${textMain}`}>Company Size</label>
+                <HelpCircle className={`w-3.5 h-3.5 ${helpIconClass}`} />
+              </div>
+              <button
+                type="button"
+                onClick={() => setCompanySize((s) => (s ? "" : "11–50 employees"))}
+                className={`flex items-center gap-2 rounded-[10px] px-3 py-3 text-left ${inputTheme}`}
+              >
+                <span className={`flex-1 text-[14px] truncate ${!companySize ? (isDark ? "text-[#BBC2CB]" : "text-zinc-500") : ""}`}>
+                  {companySize || "Select your company size"}
+                </span>
+                <ChevronDown className="w-4 h-4 opacity-60 shrink-0" />
+              </button>
+            </div>
+
+            {/* How did you hear */}
+            <div className="flex flex-col gap-2">
+              <label className={`text-[12px] transition-colors duration-300 ${textMain}`}>
                 How did you hear about Odicci?
               </label>
-              <textarea
-                rows={3}
-                placeholder="Tell us how you found us..."
-                className={`w-full rounded-lg px-3 py-2 text-[13px] outline-none resize-none transition-colors duration-300 ${inputTheme}`}
+              <input
+                value={hearAbout}
+                onChange={(e) => setHearAbout(e.target.value)}
+                placeholder="Shopify App Store, Google, an event, a friend…"
+                className={`${inputBase} ${inputTheme}`}
               />
+              <div className="flex items-start gap-1.5">
+                <Info className="w-3 h-3 mt-0.5 shrink-0" style={{ color: "#A3AEBB" }} />
+                <p className="text-[12px] leading-tight" style={{ color: "#A3AEBB" }}>
+                  You'll become the owner of this workspace. As the owner, you'll have full control of the
+                  workspace. You can change your user role later in Settings.
+                </p>
+              </div>
             </div>
+          </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={onBack}
-                className={`h-10 px-5 rounded-full text-[13px] font-medium transition-colors duration-300 ${
-                  isDark
-                    ? "border border-white/25 bg-transparent text-white hover:bg-white/[0.08]"
-                    : "border border-zinc-900/20 bg-transparent text-zinc-900 hover:bg-white/60"
-                }`}
-              >
-                ← Go back
-              </button>
-              <button
-                type="button"
-                onClick={onNext}
-                className="h-10 px-5 rounded-full text-[13px] font-semibold text-white shadow-lg shadow-black/25 hover:brightness-110 transition"
-                style={{ background: "#FF5126" }}
-              >
-                Create workspace
-              </button>
-            </div>
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex-1 h-11 rounded-full border text-[14px] transition-colors duration-300"
+              style={{ borderColor: "rgba(255,255,255,0.6)", background: "#A3AEBB", color: "#646464" }}
+            >
+              Go Back
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTouched(true);
+                if (companyName.trim().length > 0) onNext?.();
+              }}
+              className="flex-1 h-11 rounded-full text-[14px] text-white shadow-lg shadow-black/25 hover:brightness-110 transition"
+              style={{ background: "#FF5126" }}
+            >
+              Create Workspace
+            </button>
           </div>
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function FigmaLinkIcon({ className }: { className?: string }) {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" className={className} aria-hidden xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M13.5 22.5H18M13.5 22.5C11.0147 22.5 9 24.5147 9 27C9 29.4853 11.0147 31.5 13.5 31.5C15.9853 31.5 18 29.4853 18 27V22.5M13.5 22.5C11.0147 22.5 9 20.4853 9 18C9 15.5147 11.0147 13.5 13.5 13.5M18 22.5V18M13.5 13.5H18M13.5 13.5C11.0147 13.5 9 11.4853 9 9C9 6.51472 11.0147 4.5 13.5 4.5H18M18 13.5V18M18 13.5V4.5M18 13.5H22.5M18 18C18 20.4853 20.0147 22.5 22.5 22.5C24.9853 22.5 27 20.4853 27 18C27 15.5147 24.9853 13.5 22.5 13.5M18 18C18 15.5147 20.0147 13.5 22.5 13.5M18 4.5H22.5C24.9853 4.5 27 6.51472 27 9C27 11.4853 24.9853 13.5 22.5 13.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

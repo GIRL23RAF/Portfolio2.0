@@ -10,6 +10,7 @@ import { OdicciColourPalette } from "@/components/portfolio/OdicciColourPalette"
 import { OdicciSignUp } from "@/components/portfolio/OdicciSignUp";
 import { OdicciMockup } from "@/components/portfolio/OdicciMockup";
 import { ProfileSidebar } from "@/components/portfolio/ProfileSidebar";
+import { CrcleMessaging } from "@/components/portfolio/CrcleMessaging";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -23,6 +24,17 @@ const PROJECTS: Project[] = [
     title: "CRCLE",
     role: "Lead Product Designer/Owner",
     year: "2025",
+    content: {
+      "Brand Personality": {
+        label: "CRCLE — Navigation & Unified Messaging",
+        subtitle: "One feed, no dead ends",
+        hypothesis:
+          "Splitting matches, requests, and live chats across separate tabs was fragmenting the inbox. We hypothesised that a single unified feed — where a Radar intercept sits inline with an active conversation — would keep users oriented and reduce the number of screens between a signal and a reply.",
+        notes:
+          "Early builds surfaced new invites as full-screen interruptions, which felt aggressive. Landing on a hover/long-press 'peek' let people gauge intent before committing to the frosted Signal Intercepted gate — a lighter, more considered decision point that still protects the sender until there's a mutual accept.",
+      },
+      "V3: Final Screen": { customBody: <CrcleMessaging /> },
+    },
   },
   {
     id: "02",
