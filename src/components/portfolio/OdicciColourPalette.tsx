@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ChevronDown, Sun, Moon, Brush, Figma } from "lucide-react";
 import { useMemo, useState } from "react";
+import odicciBadge from "@/assets/odicci-badge.png";
 
 /**
  * OdicciColourPalette — step 3/7 of the Odicci onboarding wizard.
@@ -159,10 +160,7 @@ export function OdicciColourPalette() {
 
         {/* Odicci logo */}
         <div className="absolute top-[4%] left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
-          <div
-            className="w-4 h-4"
-            style={{ background: ACCENT, clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)" }}
-          />
+          <img src={odicciBadge} alt="" className="w-4 h-4" />
           <span className={`text-[18px] font-semibold tracking-tight ${textMain}`}>odicci</span>
         </div>
 
