@@ -1,566 +1,409 @@
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Ban,
-  ChevronLeft,
-  Flag,
-  LayoutGrid,
-  Mic,
-  MoreHorizontal,
-  Pencil,
-  Radar,
-  Send,
-  ShieldCheck,
-  Settings,
-  User,
-  X,
-} from "lucide-react";
 import { useState } from "react";
+import avatarImg from "@/assets/crcle/avatar.png";
+import arrowLeftIcon from "@/assets/crcle/arrow-left.svg";
+import batteryIcon from "@/assets/crcle/battery.svg";
+import cellularIcon from "@/assets/crcle/cellular.svg";
+import crcleLogo from "@/assets/crcle/crcle-logo.svg";
+import dragHandle from "@/assets/crcle/drag-handle.svg";
+import fireIcon from "@/assets/crcle/fire.svg";
+import fireInnerIcon from "@/assets/crcle/fire-inner.svg";
+import heartIcon from "@/assets/crcle/heart.svg";
+import laptopIcon from "@/assets/crcle/laptop.svg";
+import moreDotsIcon from "@/assets/crcle/more-dots.svg";
+import moreHorizIcon from "@/assets/crcle/more-horiz.svg";
+import navMessageIcon from "@/assets/crcle/nav-message.svg";
+import navUserIcon from "@/assets/crcle/nav-user.svg";
+import notificationBg from "@/assets/crcle/notification-bg.svg";
+import wifiIcon from "@/assets/crcle/wifi.svg";
 
 /**
- * CrcleMessaging — pixel-faithful rebuild of the CRCLE "Navigation & Unified
- * Messaging" spec: a single feed that mixes live chats with incoming match
- * invites ("Radar Intercepts"). Hovering (or long-pressing) an invite reveals
- * a frosted "peek" of the sender's profile; clicking it opens the full
- * "Signal Intercepted" gate, which Accepts into a live chat thread or
- * Declines back to the feed.
+ * CRCLE Messaging — pixel-faithful rebuild of the "Locked Search Bar" Figma frame.
+ * Unified inbox with an expanded notification center, connection avatars, and
+ * active chat list beneath a frosted bottom nav.
  */
 
-const TEAL = "#2FD6C6";
-const CORAL = "#FF6A50";
-
-interface Person {
-  name: string;
-  initials: string;
-  age: number;
-  status: string;
-  intent: string;
-  gradient: string;
-}
-
-const SERENA: Person = {
-  name: "Serena Min",
-  initials: "SM",
-  age: 24,
-  status: "Single",
-  intent: "Romantic Match",
-  gradient: "linear-gradient(135deg, #F6A45C 0%, #E85D6B 55%, #7B4FA0 100%)",
-};
-
-const SARAH_LAST_MESSAGE = "See you tomorrow at 4! Can't wait \u2728";
-
-type View = "feed" | "gate" | "chat";
+const FONT = "Montserrat, ui-sans-serif, system-ui, sans-serif";
+const BG = "#020217";
 
 export function CrcleMessaging() {
-  const [view, setView] = useState<View>("feed");
-  const [peeking, setPeeking] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [message, setMessage] = useState("");
+  const [tab, setTab] = useState<"sent" | "received">("received");
 
   return (
-    <div className="relative w-full max-w-[402px] mx-auto rounded-[46px] border-[6px] border-zinc-950 bg-zinc-950 shadow-2xl shadow-black/50 overflow-hidden">
-      {/* Dynamic island */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[120px] h-[28px] mt-2 rounded-full bg-zinc-950" />
+    <div
+      className="relative w-full max-w-[402px] mx-auto rounded-[46px] border-[6px] border-[#010211] shadow-2xl shadow-black/50 overflow-hidden"
+      style={{ background: BG }}
+    >
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[120px] h-[28px] mt-2 rounded-full bg-black" />
 
-      {/* Status bar */}
-      <div className="relative z-20 flex items-center justify-between px-7 pt-3 pb-1 text-white">
-        <span className="text-[14px] font-semibold tracking-tight">9:41</span>
-        <div className="flex items-center gap-1.5">
-          <SignalGlyph />
-          <WifiGlyph />
-          <BatteryGlyph />
-        </div>
-      </div>
+      <div className="relative aspect-[402/874] overflow-hidden" style={{ background: BG }}>
+        <StatusBar />
+        <CrcleMark />
+        <MessagesHeader menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((v) => !v)} />
 
-      {/* Screen */}
-      <div className="relative aspect-[402/800] overflow-hidden">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(165deg, #1B0F1C 0%, #35152A 45%, #401A2C 75%, #4A2033 100%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-[0.06] pointer-events-none"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(90deg, #fff 0px, #fff 1px, transparent 1px, transparent 34px)",
-          }}
-        />
-
-        <AnimatePresence mode="wait">
-          {view === "chat" ? (
-            <ChatScreen key="chat" onBack={() => setView("feed")} message={message} setMessage={setMessage} />
-          ) : (
-            <FeedScreen
-              key="feed"
-              menuOpen={menuOpen}
-              setMenuOpen={setMenuOpen}
-              peeking={peeking}
-              setPeeking={setPeeking}
-              onOpenGate={() => setView("gate")}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Gate overlay */}
         <AnimatePresence>
-          {view === "gate" && (
-            <SignalGate
-              onDecline={() => setView("feed")}
-              onAccept={() => setView("chat")}
-            />
+          {menuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-4 top-[108px] z-40 w-[147px] rounded-[24px] backdrop-blur-[4px] bg-[rgba(247,246,242,0.8)] border border-[rgba(0,0,0,0.25)] shadow-2xl p-3.5 flex flex-col gap-3"
+            >
+              <MenuItem label="Report User" danger />
+              <MenuItem label="Block User" danger />
+              <div className="h-px bg-black/10" />
+              <MenuItem label="Edit profile" />
+              <MenuItem label="Verification" />
+              <div className="h-px bg-black/10" />
+              <MenuItem label="Settings" />
+              <MenuItem label="User Sharecode" />
+            </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="absolute inset-x-3 top-[136px] bottom-[82px] overflow-hidden" onClick={() => setMenuOpen(false)}>
+          <ActiveChatList />
+          <NotificationCenter tab={tab} onTabChange={setTab} className="top-[53px]" />
+        </div>
+
+        <BottomNav />
       </div>
     </div>
   );
 }
 
-/* ---------------------------------------------------------------- Feed --- */
-
-function FeedScreen({
-  menuOpen,
-  setMenuOpen,
-  peeking,
-  setPeeking,
-  onOpenGate,
-}: {
-  menuOpen: boolean;
-  setMenuOpen: (v: boolean) => void;
-  peeking: boolean;
-  setPeeking: (v: boolean) => void;
-  onOpenGate: () => void;
-}) {
+function StatusBar() {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="absolute inset-0 flex flex-col"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
-        <ChevronLeft className="w-5 h-5 text-white/70" />
-        <span className="text-[17px] font-medium text-white">Messages</span>
-        <button
-          type="button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="w-8 h-8 flex items-center justify-center rounded-full text-white/70 hover:bg-white/10 transition-colors"
-          aria-label="More options"
-        >
-          <MoreHorizontal className="w-5 h-5" />
-        </button>
+    <div className="relative z-20 flex items-center justify-between px-5 pt-[21px] pb-[19px] text-[#f7f6f2]">
+      <span
+        className="text-[17px] font-semibold leading-[22px]"
+        style={{ fontFamily: "SF Pro, system-ui, -apple-system, sans-serif" }}
+      >
+        9:41
+      </span>
+      <div className="flex items-center gap-[7px]">
+        <div className="relative size-[12.226px] w-[19.2px] h-[12.226px]">
+          <img alt="" src={cellularIcon} className="absolute inset-0 size-full max-w-none" />
+        </div>
+        <div className="relative w-[17.142px] h-[12.328px]">
+          <img alt="" src={wifiIcon} className="absolute inset-0 size-full max-w-none" />
+        </div>
+        <div className="relative w-[27.328px] h-[13px]">
+          <img alt="" src={batteryIcon} className="absolute inset-0 size-full max-w-none" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CrcleMark() {
+  return (
+    <div className="flex justify-center pb-[17px]">
+      <div className="relative h-[8.942px] w-[25.996px]">
+        <img alt="crcle" src={crcleLogo} className="absolute inset-0 size-full max-w-none" />
+      </div>
+    </div>
+  );
+}
+
+function MessagesHeader({ menuOpen, onToggleMenu }: { menuOpen: boolean; onToggleMenu: () => void }) {
+  return (
+    <div className="relative z-20 flex items-center justify-between px-3">
+      <button
+        type="button"
+        className="backdrop-blur-[2px] bg-[rgba(253,252,251,0.1)] border border-[#f7f6f2] rounded-[40px] p-1 flex items-center justify-center size-10"
+        aria-label="Back"
+      >
+        <div className="relative size-4 overflow-clip">
+          <img alt="" src={arrowLeftIcon} className="absolute inset-0 size-full max-w-none" />
+        </div>
+      </button>
+
+      <h1 className="flex-1 text-center text-[19px] font-normal leading-none text-[#f7f6f2]" style={{ fontFamily: FONT }}>
+        Messages
+      </h1>
+
+      <button
+        type="button"
+        onClick={onToggleMenu}
+        aria-expanded={menuOpen}
+        className="backdrop-blur-[3px] bg-[rgba(253,252,251,0.1)] border border-[#f7f6f2] rounded-[24px] px-2 py-0.5 flex items-center justify-center w-12 h-10"
+        aria-label="More options"
+      >
+        <div className="relative size-6 overflow-clip">
+          <img alt="" src={moreHorizIcon} className="absolute inset-0 size-full max-w-none" />
+          <div className="absolute inset-[41.67%_16.67%]">
+            <img alt="" src={moreDotsIcon} className="absolute inset-0 size-full max-w-none" />
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function ActiveChatList() {
+  return (
+    <div className="absolute inset-x-0 top-0 flex flex-col gap-3">
+      <div className="flex items-center justify-between px-0">
+        <p className="text-[15px] leading-[21px] text-[#030426]" style={{ fontFamily: FONT }}>
+          Active Chats
+        </p>
+        <p className="text-[13px] font-light leading-[18.2px] text-[#6b7280]" style={{ fontFamily: FONT }}>
+          4 conversations
+        </p>
       </div>
 
-      {/* Options dropdown */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-4 top-12 z-30 w-[190px] rounded-2xl border border-white/10 bg-[#241521]/95 backdrop-blur-xl shadow-2xl shadow-black/40 py-1.5 overflow-hidden"
-          >
-            <MenuRow icon={Flag} label="Report User" tone="danger" />
-            <MenuRow icon={Ban} label="Block User" tone="danger" />
-            <div className="h-px bg-white/10 my-1" />
-            <MenuRow icon={Pencil} label="Edit profile" />
-            <MenuRow icon={ShieldCheck} label="Verification" />
-            <MenuRow icon={Settings} label="Settings" />
-            <MenuRow icon={LayoutGrid} label="User Shortcuts" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="flex flex-col">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <ActiveChatRow key={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto px-4 pb-24 flex flex-col gap-4" onClick={() => setMenuOpen(false)}>
-        {/* New Requests / Radar intercepts */}
-        <div
-          className="relative rounded-2xl p-3.5 border"
-          style={{ background: "rgba(47,214,198,0.14)", borderColor: "rgba(47,214,198,0.35)" }}
-        >
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[13px] font-medium" style={{ color: TEAL }}>
-              New Requests
+function ActiveChatRow() {
+  return (
+    <div className="flex items-center justify-between border-b border-[rgba(247,246,242,0.2)] p-3">
+      <div className="flex flex-1 items-center gap-3 min-w-0">
+        <div className="flex items-end shrink-0">
+          <div className="relative mr-[-8px] size-[42px] overflow-hidden rounded-[120px] border border-[#f7f6f2]">
+            <img
+              alt=""
+              src={avatarImg}
+              className="absolute h-[180.43%] left-[-7.14%] max-w-none top-[-24.58%] w-[120.23%]"
+            />
+          </div>
+          <div className="relative size-3 shrink-0 rounded-full border-2 border-[#0fc950]" />
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[15px] leading-[18.75px] text-[#f7f6f2] whitespace-nowrap" style={{ fontFamily: FONT }}>
+              Sarah Chen
             </span>
-            <div className="flex items-center gap-1 rounded-full p-0.5 text-[10px]" style={{ background: "rgba(255,255,255,0.08)" }}>
-              <span className="px-2 py-0.5 rounded-full text-white/50">Sent</span>
-              <span className="px-2 py-0.5 rounded-full text-white" style={{ background: "rgba(47,214,198,0.35)" }}>
-                Received
-              </span>
+            <div className="relative size-4 shrink-0 overflow-clip rounded-[2px]">
+              <img alt="" src={fireIcon} className="absolute inset-0 size-full max-w-none" />
+              <div className="absolute inset-[6.23%_16.68%_8.33%_16.67%]">
+                <img alt="" src={fireInnerIcon} className="absolute inset-0 size-full max-w-none" />
+              </div>
             </div>
           </div>
-
-          {/* Serena preview card — hover to peek, click to open gate */}
-          <div className="relative">
-            <button
-              type="button"
-              onMouseEnter={() => setPeeking(true)}
-              onMouseLeave={() => setPeeking(false)}
-              onFocus={() => setPeeking(true)}
-              onBlur={() => setPeeking(false)}
-              onClick={onOpenGate}
-              className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-white/5"
-            >
-              <div className="flex items-center -space-x-2 shrink-0">
-                <Avatar person={SERENA} size={30} ring />
-                <div
-                  className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white text-[11px] font-semibold border-2"
-                  style={{ background: "#4B5563", borderColor: "#35152A" }}
-                >
-                  +2
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[12.5px] text-white/90 leading-tight">Your Signal was intercepted</div>
-                <div className="text-[11px] text-white/50 leading-tight">3 new connections waiting</div>
-              </div>
-              <span
-                className="shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full text-white"
-                style={{ background: CORAL }}
-              >
-                View
-              </span>
-            </button>
-
-            {/* Peek overlay — partial, glassmorphic reveal on hover/focus */}
-            <AnimatePresence>
-              {peeking && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="pointer-events-none absolute left-0 right-0 top-[calc(100%+6px)] z-20 rounded-2xl border border-white/15 overflow-hidden shadow-2xl shadow-black/50"
-                  style={{ backdropFilter: "blur(20px)" }}
-                >
-                  <div className="flex items-center gap-3 p-3" style={{ background: "rgba(20,10,20,0.65)" }}>
-                    <div
-                      className="w-12 h-14 rounded-xl shrink-0"
-                      style={{ background: SERENA.gradient }}
-                    />
-                    <div className="min-w-0">
-                      <div className="text-[13px] font-medium text-white">{SERENA.name}</div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <Pill label={SERENA.status} />
-                        <Pill label={`${SERENA.age} yrs`} />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <p className="truncate text-[13px] font-light leading-[16.25px] text-[#6b7280]" style={{ fontFamily: FONT }}>
+            Let&apos;s catch up next week
+          </p>
         </div>
-
-        {/* Divider label */}
-        <div className="text-[11px] font-medium text-white/40 tracking-wide px-1">Active chats</div>
-
-        {/* Unified chat list */}
-        <ChatRow initials="SC" name="Sarah Chen" gradient="linear-gradient(135deg,#6EE7D6,#3B82F6)" preview={SARAH_LAST_MESSAGE} time="2m" online unread={2} />
-        <ChatRow initials="MJ" name="Marcus Jones" gradient="linear-gradient(135deg,#FBBF77,#EF6C6C)" preview="Haha that's amazing, tell me more" time="1h" />
-        <ChatRow initials="AL" name="Aria Lopez" gradient="linear-gradient(135deg,#C4B5FD,#818CF8)" preview="You: Sounds good, see you then" time="Yesterday" />
       </div>
 
-      {/* Bottom nav */}
-      <div className="absolute bottom-0 left-0 right-0 px-6 pb-6 pt-3 flex items-center justify-between" style={{ background: "linear-gradient(180deg, transparent, rgba(27,15,28,0.85) 40%)" }}>
-        <button
-          type="button"
-          className="w-11 h-11 rounded-full flex items-center justify-center border border-white/15 text-white/80 hover:bg-white/10 transition-colors"
-          style={{ background: "rgba(255,255,255,0.06)" }}
-          aria-label="Profile"
-        >
-          <User className="w-[18px] h-[18px]" />
-        </button>
-        <button
-          type="button"
-          className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-transform hover:scale-105"
-          style={{ background: `linear-gradient(135deg, ${CORAL}, #B23A6B)`, boxShadow: `0 8px 24px ${CORAL}55` }}
-          aria-label="Open Signal Panel"
-        >
-          <Radar className="w-6 h-6" />
-        </button>
-        <button
-          type="button"
-          className="w-11 h-11 rounded-full flex items-center justify-center border border-white/15 text-white/80 hover:bg-white/10 transition-colors"
-          style={{ background: "rgba(255,255,255,0.06)" }}
-          aria-label="Messages"
-        >
-          <MessageGlyphActive />
-        </button>
+      <div className="flex w-5 shrink-0 flex-col items-end gap-1">
+        <span className="text-[11px] font-light leading-[1.4] text-[#9ca3af] whitespace-nowrap" style={{ fontFamily: FONT }}>
+          1d
+        </span>
+        <div className="flex size-5 items-center justify-center rounded-full bg-[rgba(247,246,242,0.2)]">
+          <span className="text-[11px] leading-[16.5px] text-white" style={{ fontFamily: FONT }}>
+            2
+          </span>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-function ChatRow({
-  initials,
-  name,
-  gradient,
-  preview,
-  time,
-  online,
-  unread,
+function NotificationCenter({
+  tab,
+  onTabChange,
+  className = "",
 }: {
-  initials: string;
-  name: string;
-  gradient: string;
-  preview: string;
-  time: string;
-  online?: boolean;
-  unread?: number;
+  tab: "sent" | "received";
+  onTabChange: (tab: "sent" | "received") => void;
+  className?: string;
 }) {
   return (
-    <button type="button" className="w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-left hover:bg-white/5 transition-colors">
-      <div className="relative shrink-0">
-        <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-[12px] font-semibold" style={{ background: gradient }}>
-          {initials}
-        </div>
-        {online && (
-          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2" style={{ background: TEAL, borderColor: "#2A1526" }} />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[13.5px] font-medium text-white truncate">{name}</span>
-          <span className="text-[10.5px] text-white/40 shrink-0">{time}</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[12px] text-white/50 truncate">{preview}</span>
-          {!!unread && (
-            <span className="shrink-0 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-semibold text-white flex items-center justify-center" style={{ background: CORAL }}>
-              {unread}
+    <div className={`absolute inset-x-0 z-10 flex flex-col ${className}`}>
+      <div
+        className="relative overflow-hidden rounded-tl-[16px] rounded-tr-[16px]"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, rgb(30, 41, 57) 0%, rgb(30, 41, 57) 100%), linear-gradient(90deg, rgb(247, 246, 242) 0%, rgb(247, 246, 242) 100%)",
+        }}
+      >
+        <NotificationDecorations />
+
+        <div className="relative flex items-start justify-center px-3 pb-4 pt-3">
+          <div className="flex flex-1 flex-col items-center gap-3">
+            <p className="w-full text-[15px] leading-[21px] text-[#f7f6f2]" style={{ fontFamily: FONT }}>
+              Notifications
+            </p>
+            <SentReceivedToggle tab={tab} onChange={onTabChange} />
+          </div>
+          <div className="absolute right-3 top-3 flex size-6 items-center justify-center rounded-full bg-[rgba(247,246,242,0.2)]">
+            <span className="text-[13px] leading-[18.2px] text-white" style={{ fontFamily: FONT }}>
+              2
             </span>
-          )}
+          </div>
         </div>
       </div>
-    </button>
+
+      <div className="relative flex flex-col gap-4 rounded-bl-[28px] rounded-br-[28px] border border-[rgba(247,246,242,0.2)] border-t-0 bg-[rgba(2,3,29,0.2)] px-[9px] py-[11px] backdrop-blur-[4px]">
+        <DailyDropBanner />
+        <ConnectionAvatars />
+        <div className="absolute left-1/2 top-[129.8px] h-0 w-9 -translate-x-1/2">
+          <img alt="" src={dragHandle} className="block size-full max-w-none" />
+        </div>
+      </div>
+    </div>
   );
 }
 
-function MenuRow({ icon: Icon, label, tone }: { icon: typeof Flag; label: string; tone?: "danger" }) {
+function NotificationDecorations() {
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <img alt="" src={notificationBg} className="absolute left-[-8px] top-[-7px] h-[201px] w-[486px] max-w-none" />
+      </div>
+    </>
+  );
+}
+
+function SentReceivedToggle({
+  tab,
+  onChange,
+}: {
+  tab: "sent" | "received";
+  onChange: (tab: "sent" | "received") => void;
+}) {
+  return (
+    <div className="flex w-[178px] items-center gap-1 rounded-[24px] bg-[rgba(255,255,255,0.05)] p-1 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.05)]">
+      <button
+        type="button"
+        onClick={() => onChange("sent")}
+        className={`flex flex-1 items-center justify-center px-2.5 py-1 text-[13px] leading-[1.4] ${
+          tab === "sent" ? "rounded-[20px] bg-[rgba(2,3,29,0.2)] text-white" : "text-[#f7f6f2]"
+        }`}
+        style={{ fontFamily: FONT }}
+      >
+        Sent
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("received")}
+        className={`flex flex-1 items-center justify-center p-1 text-[13px] leading-[1.4] ${
+          tab === "received" ? "rounded-[20px] bg-[rgba(2,3,29,0.2)] text-white" : "text-[#f7f6f2]"
+        }`}
+        style={{ fontFamily: FONT }}
+      >
+        Received
+      </button>
+    </div>
+  );
+}
+
+function DailyDropBanner() {
+  return (
+    <div className="w-full rounded-[64px] bg-[rgba(222,221,218,0.6)] backdrop-blur-[13px] pl-4 pr-2 py-1.5">
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] leading-[1.4] text-[#030426]" style={{ fontFamily: FONT }}>
+            Daily Drop is ready
+          </p>
+          <p className="truncate text-[13px] font-light leading-[1.4] text-[#f7f6f2]" style={{ fontFamily: FONT }}>
+            3 new people to discover.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="shrink-0 rounded-[36px] bg-[#f7f6f2] px-4 py-2 text-[11px] leading-[1.4] text-[#02031d] whitespace-nowrap"
+          style={{ fontFamily: FONT }}
+        >
+          View
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ConnectionAvatars() {
+  return (
+    <div className="flex items-start gap-4">
+      <ConnectionAvatar badge="laptop" />
+      <ConnectionAvatar badge="heart" overlay="tuning" />
+    </div>
+  );
+}
+
+function ConnectionAvatar({
+  badge,
+  overlay,
+}: {
+  badge: "laptop" | "heart";
+  overlay?: "tuning";
+}) {
+  return (
+    <div className="relative flex size-[53px] shrink-0 items-center justify-center rounded-[26.5px] border border-[#11df59] bg-[rgba(253,252,251,0.3)] p-0.5">
+      <div className="relative size-[46px] overflow-hidden rounded-[120px] border border-[#f7f6f2]">
+        <img
+          alt=""
+          src={avatarImg}
+          className="absolute h-[180.43%] left-[-7.14%] max-w-none top-[-24.58%] w-[120.23%]"
+        />
+        {overlay === "tuning" && <div className="absolute inset-0 rounded-[120px] bg-[rgba(0,0,0,0.6)]" />}
+      </div>
+
+      <div className="absolute left-[-3px] top-[-3.94px] flex size-5 items-center justify-center rounded-[64px] border-[0.5px] border-[#f7f6f2] bg-[rgba(253,252,251,0.8)] p-1 backdrop-blur-[0.5px]">
+        {badge === "laptop" ? (
+          <div className="relative h-3 w-3.5 overflow-clip">
+            <img alt="" src={laptopIcon} className="absolute inset-0 size-full max-w-none" />
+          </div>
+        ) : (
+          <div className="relative size-3.5">
+            <img alt="" src={heartIcon} className="absolute inset-0 size-full max-w-none" />
+          </div>
+        )}
+      </div>
+
+      {overlay === "tuning" && (
+        <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-[2.3px]">
+          <span className="h-[8.829px] w-[4.528px] rounded-[11.472px] bg-[#f7f6f2]" />
+          <span className="h-[14.715px] w-[4.528px] rounded-[11.472px] bg-[#f7f6f2]" />
+          <span className="h-[8.829px] w-[4.528px] rounded-[11.472px] bg-[#f7f6f2]" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BottomNav() {
+  return (
+    <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2">
+      <div className="flex items-center justify-between backdrop-blur-[6px] rounded-[36px] border border-[#f7f6f2] bg-[rgba(247,246,242,0.1)] px-4 py-2.5 gap-4">
+        <div className="relative size-6 overflow-clip">
+          <img alt="" src={navUserIcon} className="absolute inset-0 size-full max-w-none" />
+        </div>
+
+        <div className="flex items-center gap-[2.8px] rounded-[119.467px] backdrop-blur-[7.467px]">
+          <span className="h-[8.4px] w-[5.6px] rounded-[18.667px] bg-[#f7f6f2]" />
+          <span className="h-[14px] w-[5.6px] rounded-[18.667px] bg-[#f7f6f2]" />
+          <span className="h-[8.4px] w-[5.6px] rounded-[18.667px] bg-[#f7f6f2]" />
+        </div>
+
+        <div className="relative size-6 overflow-clip">
+          <img alt="" src={navMessageIcon} className="absolute inset-0 size-full max-w-none" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MenuItem({ label, danger }: { label: string; danger?: boolean }) {
   return (
     <button
       type="button"
-      className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] transition-colors hover:bg-white/10 ${
-        tone === "danger" ? "text-[#FF6B6B]" : "text-white/85"
-      }`}
+      className={`flex items-center gap-2 text-[11px] font-medium ${danger ? "text-[#e60000]" : "text-[#030422]"}`}
+      style={{ fontFamily: FONT }}
     >
-      <Icon className="w-3.5 h-3.5" />
       {label}
     </button>
-  );
-}
-
-function Pill({ label }: { label: string }) {
-  return (
-    <span className="text-[10px] px-2 py-0.5 rounded-full text-white/85 border border-white/20" style={{ background: "rgba(255,255,255,0.08)" }}>
-      {label}
-    </span>
-  );
-}
-
-function Avatar({ person, size, ring }: { person: Person; size: number; ring?: boolean }) {
-  return (
-    <div
-      className={`rounded-full flex items-center justify-center text-white font-semibold shrink-0 ${ring ? "border-2" : ""}`}
-      style={{ width: size, height: size, background: person.gradient, fontSize: size * 0.36, borderColor: "#35152A" }}
-    >
-      {person.initials}
-    </div>
-  );
-}
-
-/* --------------------------------------------------------- Signal gate --- */
-
-function SignalGate({ onDecline, onAccept }: { onDecline: () => void; onAccept: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-      className="absolute inset-0 z-40 flex items-center justify-center px-6"
-    >
-      <div className="absolute inset-0 bg-black/50" style={{ backdropFilter: "blur(20px)" }} onClick={onDecline} />
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 12 }}
-        transition={{ type: "spring", stiffness: 280, damping: 26 }}
-        className="relative w-full rounded-[28px] border border-white/15 overflow-hidden shadow-2xl shadow-black/60"
-        style={{ background: "rgba(35,18,32,0.9)" }}
-      >
-        <button
-          type="button"
-          onClick={onDecline}
-          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:bg-white/10 transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)" }}
-          aria-label="Close"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        <div className="px-5 pt-4 pb-1 text-center text-[11px] font-medium tracking-[0.14em] uppercase" style={{ color: TEAL }}>
-          Signal Intercepted
-        </div>
-
-        <div className="mt-2 h-[220px] mx-4 rounded-2xl" style={{ background: SERENA.gradient }} />
-
-        <div className="px-5 pt-4 pb-2 text-center">
-          <div className="text-[19px] font-medium text-white">
-            {SERENA.name}, <span className="text-white/70">{SERENA.age}</span>
-          </div>
-          <div className="flex items-center justify-center gap-1.5 mt-2">
-            <Pill label={SERENA.status} />
-            <Pill label={SERENA.intent} />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 px-5 pt-3 pb-5">
-          <button
-            type="button"
-            onClick={onDecline}
-            className="flex-1 h-11 rounded-full text-[13.5px] font-medium text-white/80 border border-white/20 hover:bg-white/10 transition-colors"
-          >
-            Decline
-          </button>
-          <button
-            type="button"
-            onClick={onAccept}
-            className="flex-1 h-11 rounded-full text-[13.5px] font-medium text-white shadow-lg transition-transform hover:scale-[1.02]"
-            style={{ background: `linear-gradient(135deg, ${CORAL}, #B23A6B)`, boxShadow: `0 8px 20px ${CORAL}55` }}
-          >
-            Accept
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-/* ------------------------------------------------------------- Chat --- */
-
-function ChatScreen({
-  onBack,
-  message,
-  setMessage,
-}: {
-  onBack: () => void;
-  message: string;
-  setMessage: (v: string) => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 24 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 24 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="absolute inset-0 flex flex-col"
-    >
-      {/* Header */}
-      <div className="flex items-center gap-2.5 px-4 pt-3 pb-3 border-b border-white/10 shrink-0">
-        <button type="button" onClick={onBack} className="w-7 h-7 flex items-center justify-center text-white/70 hover:text-white transition-colors" aria-label="Back">
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <Avatar person={SERENA} size={34} />
-        <div className="flex-1 min-w-0">
-          <div className="text-[13.5px] font-medium text-white leading-tight">{SERENA.name}</div>
-          <div className="flex items-center gap-1 text-[11px] text-white/50 leading-tight">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: TEAL }} />
-            Online
-          </div>
-        </div>
-        <MoreHorizontal className="w-[18px] h-[18px] text-white/60" />
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
-        <div className="text-center text-[10.5px] text-white/40">Connection verified &middot; encrypted</div>
-        <div className="max-w-[78%] self-start rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-[13px] text-white" style={{ background: "rgba(255,255,255,0.08)" }}>
-          Hey! Your Signal matched mine \u2014 loved that you're into design systems too. Would love to connect and swap ideas about component libraries.
-        </div>
-        <div className="max-w-[78%] self-end rounded-2xl rounded-br-sm px-3.5 py-2.5 text-[13px] text-white" style={{ background: `linear-gradient(135deg, ${CORAL}, #B23A6B)` }}>
-          Hey! How are you?
-        </div>
-      </div>
-
-      {/* Composer */}
-      <div className="flex items-center gap-2 px-3 pb-4 pt-2 shrink-0">
-        <div className="flex-1 flex items-center gap-2 h-11 rounded-full px-3.5" style={{ background: "rgba(255,255,255,0.08)" }}>
-          <input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Message..."
-            className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder-white/40 outline-none"
-          />
-          <Mic className="w-4 h-4 text-white/50 shrink-0" />
-        </div>
-        <button
-          type="button"
-          className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0 transition-transform hover:scale-105"
-          style={{ background: `linear-gradient(135deg, ${CORAL}, #B23A6B)` }}
-          aria-label="Send"
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-/* --------------------------------------------------------- Status bar --- */
-
-function SignalGlyph() {
-  return (
-    <svg width="17" height="11" viewBox="0 0 17 11" fill="none">
-      <rect x="0" y="7" width="3" height="4" rx="0.8" fill="white" />
-      <rect x="4.5" y="5" width="3" height="6" rx="0.8" fill="white" />
-      <rect x="9" y="3" width="3" height="8" rx="0.8" fill="white" />
-      <rect x="13.5" y="0" width="3" height="11" rx="0.8" fill="white" />
-    </svg>
-  );
-}
-
-function WifiGlyph() {
-  return (
-    <svg width="15" height="11" viewBox="0 0 15 11" fill="none">
-      <path
-        d="M7.5 9.8a1 1 0 100-2 1 1 0 000 2zM4.8 6.8a3.8 3.8 0 015.4 0M2.4 4.3a7.2 7.2 0 0110.2 0"
-        stroke="white"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function BatteryGlyph() {
-  return (
-    <svg width="24" height="11" viewBox="0 0 24 11" fill="none">
-      <rect x="0.5" y="0.5" width="20" height="10" rx="2.5" stroke="white" strokeOpacity="0.4" />
-      <rect x="2" y="2" width="17" height="7" rx="1.5" fill="white" />
-      <path d="M22 4v3a1.5 1.5 0 000-3z" fill="white" fillOpacity="0.4" />
-    </svg>
-  );
-}
-
-function MessageGlyphActive() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="rgba(255,255,255,0.12)"
-      />
-    </svg>
   );
 }
