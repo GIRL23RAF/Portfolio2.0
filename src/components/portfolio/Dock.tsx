@@ -1,15 +1,9 @@
-import { useRef } from "react";
-import {
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  type MotionValue,
-} from "framer-motion";
+import { useState } from "react";
+import { motion } from "framer-motion";
 
 interface DockItem {
-  label: string; // "Cr", "Fd", "Od", "Ap"
-  slug: string; // matches Project.slug
+  label: string;
+  slug: string;
 }
 
 interface Props {
@@ -18,79 +12,143 @@ interface Props {
   activeSlug?: string | null;
 }
 
-// macOS-style floating dock with cursor-driven magnification.
-// Tracks the mouse X within the dock and scales each icon by proximity.
+const BASE = 44;
+const GAP = 12;
+/** Extra-squishy spring — low stiffness, soft bounce */
+const SPRING = { type: "spring" as const, stiffness: 90, damping: 10, mass: 0.65 };
+
+/**
+ * Floating macOS-style dock — clear glass capsule with symmetrical padding.
+ * Layout slots grow with hover so icons stay inside the pill edge.
+ */
 export function Dock({ items, onSelect, activeSlug }: Props) {
-  // Shared motion value: mouse X position relative to viewport.
-  // Set to Infinity when the cursor leaves so all icons return to rest.
-  const mouseX = useMotionValue<number>(Infinity);
+  const [hovered, setHovered] = useState<number | null>(null);
 
   return (
     <motion.div
-      initial={{ y: 40, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.2 }}
-      onMouseMove={(e) => mouseX.set(e.clientX)}
-      onMouseLeave={() => mouseX.set(Infinity)}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/70 backdrop-blur-xl border border-white/80 rounded-full px-4 py-2.5 flex items-end gap-3 shadow-2xl shadow-slate-300/40"
+      initial={{ y: 56, opacity: 0, scale: 0.92 }}
+      animate={{ y: 0, opacity: 1, scale: 1 }}
+      transition={{ ...SPRING, delay: 0.15 }}
+      className="pointer-events-none fixed bottom-8 left-1/2 z-[60] -translate-x-1/2"
     >
-      {items.map((item) => (
-        <DockButton
-          key={item.slug}
-          item={item}
-          mouseX={mouseX}
-          active={activeSlug === item.slug}
-          onSelect={onSelect}
+      <motion.div
+        layout
+        transition={SPRING}
+        onMouseLeave={() => setHovered(null)}
+        className="dock-glass pointer-events-auto relative flex items-center justify-center overflow-hidden rounded-full border border-white/15 bg-white/5 p-3 shadow-2xl backdrop-blur-sm"
+        style={{ gap: GAP }}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0 rounded-full bg-gradient-to-b from-white/12 via-transparent to-transparent"
         />
-      ))}
+        <div className="dock-glass-lens z-0 opacity-25" aria-hidden />
+
+        {/* Layout track — width/height spring with slots; icons never leave the glass */}
+        <motion.div
+          layout
+          transition={SPRING}
+          className="relative z-[1] flex items-center justify-center"
+          style={{ gap: GAP }}
+        >
+          {items.map((item, index) => (
+            <DockButton
+              key={item.slug}
+              item={item}
+              index={index}
+              hovered={hovered}
+              active={activeSlug === item.slug}
+              onHover={setHovered}
+              onSelect={onSelect}
+            />
+          ))}
+        </motion.div>
+      </motion.div>
     </motion.div>
   );
 }
 
-// Individual dock button. Measures its own center to compute distance
-// from the cursor, then magnifies its size accordingly.
 function DockButton({
   item,
-  mouseX,
+  index,
+  hovered,
   active,
+  onHover,
   onSelect,
 }: {
   item: DockItem;
-  mouseX: MotionValue<number>;
+  index: number;
+  hovered: number | null;
   active: boolean;
+  onHover: (index: number | null) => void;
   onSelect: (slug: string) => void;
 }) {
-  const ref = useRef<HTMLButtonElement>(null);
+  const isHovered = hovered === index;
+  const dist = hovered === null ? null : Math.abs(hovered - index);
+  const isNeighbour = dist === 1;
+  const isDistant = dist !== null && dist >= 2;
 
-  // Distance from cursor to this icon's horizontal center.
-  const distance = useTransform(mouseX, (val) => {
-    const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
-    return val - bounds.x - bounds.width / 2;
-  });
+  // Magnification stays inside the slot — no y-lift past the glass edge
+  const scale = isHovered ? 1.28 : isNeighbour ? 1.08 : isDistant ? 0.95 : 1;
+  const pushDir =
+    hovered !== null && dist !== null && dist > 0
+      ? index < hovered
+        ? -1
+        : 1
+      : 0;
+  const x = isNeighbour ? pushDir * 8 : isDistant ? pushDir * 3 : 0;
 
-  // Map distance to size — icons furthest from cursor rest at 36px,
-  // the icon nearest the cursor scales up to 60px.
-  const sizeRaw = useTransform(distance, [-140, 0, 140], [36, 60, 36]);
-  const size = useSpring(sizeRaw, { mass: 0.1, stiffness: 200, damping: 15 });
-
-  // Slight lift for magnified icons for the classic macOS bounce feel.
-  const liftRaw = useTransform(distance, [-140, 0, 140], [0, -8, 0]);
-  const lift = useSpring(liftRaw, { mass: 0.1, stiffness: 200, damping: 15 });
+  // Slot = visual icon size so the capsule layout-springs symmetrically
+  const slot = Math.ceil(BASE * scale);
 
   return (
-    <motion.button
-      ref={ref}
-      onClick={() => onSelect(item.slug)}
-      style={{ width: size, height: size, y: lift }}
-      whileTap={{ scale: 0.85 }}
-      className={
-        "rounded-full flex items-center justify-center text-[11px] font-semibold tracking-tight shrink-0 transition-colors " +
-        (active
-          ? "bg-zinc-950 text-white shadow-lg shadow-zinc-950/30"
-          : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200")
-      }
+    <motion.div
+      layout
+      onMouseEnter={() => onHover(index)}
+      animate={{ width: slot, height: slot }}
+      transition={SPRING}
+      className="relative flex shrink-0 items-center justify-center"
     >
-      {item.label}
-    </motion.button>
+      <motion.button
+        type="button"
+        onClick={() => onSelect(item.slug)}
+        animate={{ scale, x }}
+        transition={SPRING}
+        whileTap={{ scale: scale * 0.9 }}
+        aria-label={`Open ${item.label} project`}
+        aria-current={active ? "true" : undefined}
+        className={
+          "group relative flex shrink-0 items-center justify-center overflow-hidden rounded-full text-[12px] font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent " +
+          (active
+            ? "bg-zinc-950/90 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45),0_1px_0_rgba(255,255,255,0.3)_inset]"
+            : "bg-white/55 text-zinc-800 shadow-[0_4px_16px_rgba(0,0,0,0.18),0_1.5px_0_rgba(255,255,255,0.75)_inset] backdrop-blur-sm")
+        }
+        style={{ width: BASE, height: BASE }}
+      >
+        <motion.span
+          aria-hidden
+          animate={{ opacity: isHovered ? 1 : 0.55 }}
+          transition={SPRING}
+          className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/75 via-white/15 to-transparent"
+        />
+        <motion.span
+          aria-hidden
+          animate={{
+            opacity: isHovered ? 0.95 : 0.3,
+            x: isHovered ? 3 : 0,
+          }}
+          transition={SPRING}
+          className="pointer-events-none absolute -left-1/4 top-0 h-1/2 w-3/4 rounded-full bg-white/60 blur-[6px]"
+        />
+        <span className="relative z-[1]">{item.label}</span>
+
+        <motion.span
+          aria-hidden
+          animate={{ opacity: active ? 1 : 0, scale: active ? 1 : 0.4 }}
+          transition={SPRING}
+          className="absolute bottom-1.5 left-1/2 z-[1] h-1 w-1 -translate-x-1/2 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.75)]"
+        />
+      </motion.button>
+    </motion.div>
   );
 }

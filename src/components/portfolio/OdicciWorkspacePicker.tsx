@@ -1,19 +1,36 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, ChevronDown, Check, X, Sun, Moon, Upload, HelpCircle, AlertTriangle, Info } from "lucide-react";
+import { Plus, Search, ChevronDown, Check, X, Upload, HelpCircle, AlertTriangle, Info } from "lucide-react";
 import { useState } from "react";
-import odicciBadge from "@/assets/odicci-badge.png";
+import { OdicciSignUp } from "@/components/portfolio/OdicciSignUp";
+import { OdicciBrowserFrame } from "@/components/portfolio/OdicciBrowserFrame";
+import odicciLogo from "@/assets/odicci/odicci-logo-wordmark.png";
+import workspaceGradientPattern from "@/assets/odicci/workspace-gradient-pattern.svg";
+import workspaceGradient2 from "@/assets/odicci/workspace-gradient-2.svg";
+import workspaceDiamondMeshSvg from "@/assets/odicci/workspace-diamond-mesh.svg?raw";
 
 /**
- * OdicciWorkspacePicker — pixel-faithful rebuild of the "Choose a workspace"
- * onboarding screen (step 1/7) from the Figma frame, now with a live
- * light / dark theme toggle.
- *
- * Wrapped in a macOS-style browser chrome (title bar + tab + URL toolbar).
- * The canvas below swaps between a deep twilight gradient and a crisp light
- * gradient, with a frosted-glass card that lists selectable workspaces.
+ * OdicciWorkspacePicker — Figma Choose workspace_Default (65:94009).
+ * Atmosphere (65:94020): base dual gradient + Pattern (636:103678) +
+ * dark wash (65:94026) + Gradient 2 (636:103687) — exact Figma stack.
+ * Mesh (65:94027) is inlined so Odicci mark icons keep backdrop-blur.
+ * Flow: picker → create (713:199787) → Brand Personality (business first).
  */
 
-const ACCENT = "#E9582C";
+const ACCENT = "#FF5126";
+const FONT = "Poppins, ui-sans-serif, system-ui, sans-serif";
+/** Figma Secondary 200 — soft glow hex shared with Sign Up */
+const SECONDARY_200 = "#E6F4FE";
+
+/** Artboard 1512 — content is 7% narrower than the prior 60px-inset width (1392) */
+const CONTENT_W = Math.round(1392 * 0.93); // 1295
+const FRAME_INSET = Math.round((1512 - CONTENT_W) / 2); // ~109, keeps block centered
+const LIST_COL_W = Math.round(554 * (CONTENT_W / 1081)); // ~663
+/** Logo left edge aligns with modal / Add Integration */
+const LOGO_W = Math.round(178 * 1.4); // 249
+const LOGO_H = Math.round(86 * 1.4); // 120
+/** Wordmark PNG is padded (~189/600 left); shift so the orange glyph meets the modal edge */
+const LOGO_CONTENT_LEFT_RATIO = 189 / 600;
+const LOGO_LEFT = Math.round(FRAME_INSET - LOGO_W * LOGO_CONTENT_LEFT_RATIO);
 
 interface Workspace {
   initials: string;
@@ -24,10 +41,10 @@ interface Workspace {
 }
 
 const WORKSPACES: Workspace[] = [
-  { initials: "AC", name: "Acme Corporation", plan: "Enterprise Plan", members: "45 members", color: "#1E5FD8" },
+  { initials: "AC", name: "Acme Corporation", plan: "Enterprise Plan", members: "45 members", color: "#0356E5" },
   { initials: "TS", name: "TechStart Studios", plan: "Pro Plan", members: "12 members", color: ACCENT },
-  { initials: "CL", name: "Creative Labs", plan: "Team Plan", members: "8 members", color: "#1F2937" },
-  { initials: "PW", name: "Personal Workspace", plan: "Free Plan", members: "1 member", color: "#4B5563" },
+  { initials: "CL", name: "Creative Labs", plan: "Team Plan", members: "8 members", color: "#1F4364" },
+  { initials: "PW", name: "Personal Workspace", plan: "Free Plan", members: "1 member", color: "#4A5565" },
 ];
 
 interface Integration {
@@ -44,34 +61,21 @@ const INTEGRATIONS: Integration[] = [
   { id: "omnisend", name: "Omnisend", color: "#1F2937", letter: "O" },
 ];
 
-const DARK_BG =
-  "linear-gradient(135deg, #1e3a5f 0%, #2b4a7a 40%, #3a5a8a 70%, #4a6a9a 100%)";
-const LIGHT_BG =
-  "linear-gradient(135deg, #f7fbff 0%, #eef6ff 50%, #e6f4fe 100%)";
-
-const GRID_DARK = {
-  backgroundImage:
-    "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px), linear-gradient(45deg, transparent 49.5%, rgba(255,255,255,0.4) 49.5%, rgba(255,255,255,0.4) 50.5%, transparent 50.5%), linear-gradient(-45deg, transparent 49.5%, rgba(255,255,255,0.4) 49.5%, rgba(255,255,255,0.4) 50.5%, transparent 50.5%)",
-  backgroundSize: "72px 72px, 72px 72px, 72px 72px, 72px 72px",
-};
-
-const GRID_LIGHT = {
-  backgroundImage:
-    "linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(45deg, transparent 49.5%, rgba(0,0,0,0.12) 49.5%, rgba(0,0,0,0.12) 50.5%, transparent 50.5%), linear-gradient(-45deg, transparent 49.5%, rgba(0,0,0,0.12) 49.5%, rgba(0,0,0,0.12) 50.5%, transparent 50.5%)",
-  backgroundSize: "72px 72px, 72px 72px, 72px 72px, 72px 72px",
-};
-
 export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [draftSelected, setDraftSelected] = useState<string[]>([]);
   const [savedSelected, setSavedSelected] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [step, setStep] = useState<"picker" | "create">("picker");
+  const [step, setStep] = useState<"picker" | "create" | "login">("picker");
   const [companyName, setCompanyName] = useState("");
 
   const isDark = theme === "dark";
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+
+  if (step === "login") {
+    return <OdicciSignUp variant="login" onBack={() => setStep("picker")} />;
+  }
 
   const openModal = () => {
     setDraftSelected(savedSelected);
@@ -87,10 +91,6 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
   const save = () => {
     setSavedSelected(draftSelected);
     setModalOpen(false);
-    if (draftSelected.length > 0) {
-      // transition to create workspace screen
-      setTimeout(() => setStep("create"), 250);
-    }
   };
 
   const filtered = INTEGRATIONS.filter((i) =>
@@ -102,240 +102,161 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
   );
   const canCreate = savedIntegrations.length > 0;
 
-  const panel = isDark
-    ? "bg-white/[0.02] border-white/10"
-    : "bg-white/15 border-white/35";
   const textMain = isDark ? "text-white" : "text-zinc-900";
-  const textSub = isDark ? "text-white/70" : "text-zinc-500";
-  const textMuted = isDark ? "text-white/60" : "text-zinc-500";
+  const textSub = isDark ? "text-white/60" : "text-zinc-500";
+  const textMuted = isDark ? "text-white/70" : "text-zinc-500";
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/40 bg-white">
-      {/* Browser chrome — title bar with traffic lights, tab, step counter */}
-      <div className="flex items-center h-10 px-4 border-b border-zinc-200 bg-white">
-        <div className="flex items-center gap-[7px]">
-          <span className="w-3 h-3 rounded-full bg-[#FF5F57] shadow-inner" />
-          <span className="w-3 h-3 rounded-full bg-[#FEBC2E] shadow-inner" />
-          <span className="w-3 h-3 rounded-full bg-[#28C840] shadow-inner" />
-        </div>
-        <div className="flex-1 pl-5 flex items-end h-full">
-          <div className="flex items-center gap-2 h-8 px-3.5 rounded-t-lg border-t border-x border-zinc-200 bg-zinc-100">
-            <span className="w-3.5 h-3.5 rounded-full" style={{ background: ACCENT }} />
-            <span className="text-[12px] font-medium text-zinc-900 tracking-tight">
-              odicci | Workspace Setup
-            </span>
-            <span className="ml-1 text-zinc-500 text-[10px]">✕</span>
-          </div>
-          <span className="w-7 h-7 flex items-center justify-center text-zinc-800 text-base leading-none">
-            +
-          </span>
-        </div>
-        <div className="text-[11px] font-mono text-zinc-500 tabular-nums">1/7</div>
-      </div>
-
-      {/* Toolbar — nav arrows, refresh, URL bar, theme toggle */}
-      <div className="flex items-center gap-2 h-11 px-3 border-b border-zinc-200 bg-white">
-        <ChevronDown className="w-4 h-4 text-zinc-400 rotate-90" />
-        <ChevronDown className="w-4 h-4 text-zinc-900 -rotate-90" />
-        <button className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100">
-          <RefreshGlyph />
-        </button>
-        <div className="flex-1 flex items-center gap-2 h-[30px] px-3 rounded-lg border border-zinc-200 bg-zinc-100">
-          <LockGlyph />
-          <span className="text-[13px] text-zinc-500 tracking-tight">odicci.com/onboarding</span>
-        </div>
-        <span className="text-zinc-500 text-base tracking-widest leading-none">···</span>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
-          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+    <OdicciBrowserFrame
+      tabLabel="odicci | Workspace Setup"
+      stepLabel={step === "create" ? "2/7" : "1/7"}
+      url="odicci.com/onboarding"
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      canvasClassName="bg-[#ffe4e4]"
+    >
+      {/* Artboard — Figma 65:94009 */}
+      <div className="relative size-full overflow-hidden">
+        {/*
+          Atmosphere (65:94020) — exact Figma layer order:
+          base dual gradient → Gradient Pattern → dark wash → Gradient 2
+        */}
+        <div
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+          aria-hidden
+          style={{ filter: "saturate(1.05)" }}
         >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {/* Canvas */}
-      <div
-        className={
-          "relative aspect-[1512/860] overflow-hidden transition-colors duration-300 " +
-          (isDark ? "bg-[#1e3a5f]" : "bg-[#E6F4FE]")
-        }
-      >
-        {/* Gradient background crossfade */}
-        <div
-          className="absolute inset-0 transition-opacity duration-300"
-          style={{ background: DARK_BG, opacity: isDark ? 1 : 0 }}
-        />
-        <div
-          className="absolute inset-0 transition-opacity duration-300"
-          style={{ background: LIGHT_BG, opacity: isDark ? 0 : 1 }}
-        />
-
-        {/* Technical isometric grid overlay */}
-        <div
-          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-          style={{ ...GRID_DARK, opacity: isDark ? 0.08 : 0 }}
-        />
-        <div
-          className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-          style={{ ...GRID_LIGHT, opacity: isDark ? 0 : 0.06 }}
-        />
-
-        {/* Ambient glow blobs (breathing) */}
-        <motion.div
-          className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full pointer-events-none transition-colors duration-300"
-          style={{
-            backgroundColor: isDark ? "rgba(255,255,255,0.35)" : "rgba(200,220,240,0.35)",
-            filter: "blur(60px)",
-          }}
-          animate={{ scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute top-1/3 -right-40 w-[600px] h-[600px] rounded-full pointer-events-none transition-colors duration-300"
-          style={{
-            backgroundColor: isDark ? "rgba(233,88,44,0.33)" : "rgba(200,220,240,0.25)",
-            filter: "blur(90px)",
-          }}
-          animate={{ scale: [1.05, 0.95, 1.05], opacity: [0.6, 0.9, 0.6] }}
-          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-        />
-        <motion.div
-          className="absolute -bottom-40 left-1/4 w-[560px] h-[560px] rounded-full pointer-events-none transition-colors duration-300"
-          style={{
-            backgroundColor: isDark ? "rgba(233,88,44,0.27)" : "rgba(200,220,240,0.20)",
-            filter: "blur(80px)",
-          }}
-          animate={{ scale: [1, 1.12, 1], opacity: [0.55, 0.85, 0.55] }}
-          transition={{ duration: 13, repeat: Infinity, ease: "easeInOut", delay: 3 }}
-        />
-
-        {/* Odicci logo — top center */}
-        <div className="absolute top-[6%] left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-          <img src={odicciBadge} alt="" className="w-5 h-5" />
-          <span className={`text-[22px] font-semibold tracking-tight transition-colors duration-300 ${textMain}`}>
-            odicci
-          </span>
-        </div>
-
-        {/* Center glass card + footer — locked together in a single centered column so the footer sits directly below the frame */}
-        {step === "picker" && (
-        <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 w-[86%] flex flex-col gap-3">
           <div
-            className={`relative overflow-hidden rounded-[28px] ${panel} backdrop-blur-2xl shadow-2xl shadow-black/20 px-8 md:px-12 py-6 md:py-8 transition-colors duration-300`}
+            className="absolute inset-0 overflow-hidden backdrop-blur-[70px]"
+            style={{
+              backgroundImage:
+                "linear-gradient(90deg, rgba(51, 51, 51, 0.4) 0%, rgba(51, 51, 51, 0.4) 100%), linear-gradient(190.642deg, rgba(255, 255, 255, 0.64) 11.686%, rgba(0, 24, 58, 0.8) 100%)",
+            }}
           >
-            {/* Static top-edge highlight (glass rim) */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-px"
-              style={{
-                background: isDark
-                  ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)"
-                  : "linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)",
-              }}
-            />
-            {/* Soft inner top glow */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-24"
-              style={{
-                background: isDark
-                  ? "linear-gradient(180deg, rgba(255,255,255,0.10), transparent)"
-                  : "linear-gradient(180deg, rgba(255,255,255,0.55), transparent)",
-              }}
-            />
-            {/* Moving diagonal specular reflection */}
-            <motion.div
-              aria-hidden
-              className="pointer-events-none absolute -inset-y-8 w-[45%] -skew-x-12"
-              style={{
-                background: isDark
-                  ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0.16) 50%, rgba(255,255,255,0.08) 55%, transparent)"
-                  : "linear-gradient(90deg, transparent, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0.65) 50%, rgba(255,255,255,0.35) 55%, transparent)",
-                mixBlendMode: "screen",
-              }}
-              initial={{ x: "-60%" }}
-              animate={{ x: "220%" }}
-              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
-            />
-            <div className="relative">
-            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-8 md:gap-12 items-start">
-              {/* Left — heading */}
-              <div className="flex flex-col justify-start min-w-0">
-                <h2 className={`text-[26px] md:text-[30px] font-semibold tracking-tight leading-[1.15] whitespace-nowrap transition-colors duration-300 ${textMain}`}>
-                  Choose a workspace
-                </h2>
-                <p className={`text-sm md:text-[15px] mt-1.5 transition-colors duration-300 ${textSub}`}>
-                  to continue to Odicci
-                </p>
-              </div>
-
-              {/* Right — search + list */}
-              <div className="flex flex-col min-w-0">
-                <div
-                  className={`flex items-center gap-2 h-11 rounded-full px-4 transition-colors duration-300 ${
-                    isDark
-                      ? "border border-white/20 bg-white/[0.06]"
-                      : "border border-zinc-900/10 bg-white/70"
-                  }`}
-                >
-                  <Search className={`w-4 h-4 transition-colors duration-300 ${isDark ? "text-white/50" : "text-zinc-500"}`} />
-                  <input
-                    placeholder="Search search workspaces"
-                    className={`flex-1 min-w-0 bg-transparent text-[13px] outline-none transition-colors duration-300 ${
-                      isDark
-                        ? "text-white placeholder-white/50"
-                        : "text-zinc-900 placeholder-zinc-500"
-                    }`}
-                  />
-                </div>
-
-                <ul className={`mt-2 divide-y transition-colors duration-300 ${isDark ? "divide-white/10" : "divide-zinc-900/10"}`}>
-                  {WORKSPACES.map((w) => (
-                    <motion.li
-                      key={w.initials}
-                      whileHover={{ x: 2 }}
-                      className="flex items-center gap-3 py-2 cursor-pointer group"
-                    >
-                      <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-semibold shrink-0"
-                        style={{ background: w.color }}
-                      >
-                        {w.initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className={`text-[13px] font-medium tracking-tight truncate transition-colors duration-300 ${textMain}`}>
-                          {w.name}
-                        </div>
-                        <div className={`text-[11px] tracking-tight truncate transition-colors duration-300 ${textMuted}`}>
-                          {w.plan} · {w.members}
-                        </div>
-                      </div>
-                    </motion.li>
-                  ))}
-                </ul>
+            {/* Gradient Pattern (636:103678) */}
+            <div className="absolute left-[-498px] top-[-233px] h-[1448px] w-[2508px]">
+              <div className="absolute inset-[-24.52%_-10.37%_-8.43%_-4.78%]">
+                <img
+                  src={workspaceGradientPattern}
+                  alt=""
+                  className="block size-full max-w-none"
+                />
               </div>
             </div>
+            {/* Dark wash (65:94026) */}
+            <div className="absolute inset-0 bg-[rgba(0,17,26,0.6)] backdrop-blur-[100px]" />
+            {/* Gradient 2 (636:103687) */}
+            <div className="absolute left-[-172px] top-[-156px] h-[588px] w-[1908px]">
+              <div className="absolute inset-[-65.99%_-15.72%_-51.02%_-19.39%]">
+                <img
+                  src={workspaceGradient2}
+                  alt=""
+                  className="block size-full max-w-none"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
-            {/* Divider + create new */}
-            <div className={`mt-3 pt-3 flex items-center justify-between gap-4 transition-colors duration-300 ${isDark ? "border-t border-white/10" : "border-t border-zinc-900/10"}`}>
-              <button
-                type="button"
-                onClick={() => setStep("create")}
-                className={`flex items-center gap-2 text-[13px] tracking-tight transition-colors duration-300 ${
-                  isDark
-                    ? "text-white/85 hover:text-white"
-                    : "text-zinc-600 hover:text-zinc-900"
-                }`}
+        {/*
+          Mesh + Odicci icons (65:94027) — MUST be inlined (not <img>) so
+          foreignObject backdrop-filter blurs the atmosphere behind the marks.
+        */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[1176px] w-[1565px] -translate-x-1/2 -translate-y-1/2 [&_svg]:block [&_svg]:size-full [&_svg]:max-w-none"
+          dangerouslySetInnerHTML={{ __html: workspaceDiamondMeshSvg }}
+        />
+
+        {/* Light-mode wash (theme toggle) — Secondary 200 */}
+        <div
+          className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+          style={{ background: SECONDARY_200, opacity: isDark ? 0 : 0.7 }}
+        />
+
+        <img
+          src={odicciLogo}
+          alt="odicci"
+          className="absolute object-contain object-left"
+          style={{
+            left: LOGO_LEFT,
+            top: 48,
+            width: LOGO_W,
+            height: LOGO_H,
+          }}
+          width={LOGO_W}
+          height={LOGO_H}
+        />
+
+        {/* Workspace modal — 60px side padding; left edge aligns with logo */}
+        {step === "picker" && (
+        <div
+          className="absolute top-[210px] flex flex-col"
+          style={{ left: FRAME_INSET, width: CONTENT_W }}
+        >
+          <div className="relative overflow-hidden rounded-t-[48px] border-2 border-b-0 border-white/20 bg-[rgba(0,50,90,0.1)] backdrop-blur-[40px]">
+            <div className="px-9 pb-2 pt-9">
+              <div
+                className="grid items-start gap-11"
+                style={{ gridTemplateColumns: `1fr ${LIST_COL_W}px` }}
               >
-                <Plus className="w-4 h-4" />
-                Create new workspace
-              </button>
+                <div className="flex min-w-0 flex-col justify-start">
+                  <h2 className={`text-[29px] font-normal leading-[1.2] tracking-tight transition-colors duration-300 ${textMain}`}>
+                    Choose a workspace
+                  </h2>
+                  <p className={`mt-1 text-[23px] font-normal leading-[1.2] transition-colors duration-300 ${textSub}`}>
+                    to continue to Odicci
+                  </p>
+                </div>
+
+                <div className="flex min-w-0 flex-col">
+                  <div className="flex items-center gap-3 rounded-[63px] border border-white/15 bg-white/15 py-[17px] pl-[17px] pr-3.5">
+                    <Search className="size-[17px] shrink-0 text-white" />
+                    <input
+                      placeholder="Search workspaces"
+                      className="min-w-0 flex-1 bg-transparent text-[17px] text-white outline-none placeholder-white/40"
+                    />
+                  </div>
+
+                  <ul className="mt-4 divide-y divide-white/15">
+                    {WORKSPACES.map((w) => (
+                      <motion.li
+                        key={w.initials}
+                        whileHover={{ x: 2 }}
+                        className="group flex cursor-pointer items-center gap-5 py-[18px] first:border-t first:border-white/15"
+                        onClick={() => setStep("login")}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setStep("login");
+                          }
+                        }}
+                      >
+                        <div
+                          className="flex size-12 shrink-0 items-center justify-center rounded-full border border-white text-[17px] font-normal tracking-tight text-white"
+                          style={{ background: w.color }}
+                        >
+                          {w.initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className={`truncate text-[17px] font-normal tracking-tight ${textMain}`}>
+                            {w.name}
+                          </div>
+                          <div className={`truncate text-[15px] tracking-tight ${textMuted}`}>
+                            {w.plan} · {w.members}
+                          </div>
+                        </div>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
 
               {savedIntegrations.length > 0 && (
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className={`text-[11px] tracking-tight hidden md:inline transition-colors duration-300 ${textMuted}`}>
+                <div className="mt-3 flex items-center justify-end gap-3 border-t border-white/10 pt-3">
+                  <span className={`text-[11px] tracking-tight ${textMuted}`}>
                     Integrations
                   </span>
                   <div className="flex items-center -space-x-2">
@@ -344,9 +265,7 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
                         key={i.id}
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-white text-[11px] font-semibold shadow-md transition-colors duration-300 ${
-                          isDark ? "border-white/20" : "border-white/60"
-                        }`}
+                        className="flex size-7 items-center justify-center rounded-full border-2 border-white/20 text-[11px] font-semibold text-white shadow-md"
                         style={{ background: i.color }}
                         title={i.name}
                       >
@@ -359,7 +278,8 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
                     animate={{ opacity: 1, x: 0 }}
                     type="button"
                     disabled={!canCreate}
-                    className="h-8 px-3 rounded-full text-[12px] font-medium text-white shadow-lg shadow-black/20 transition-transform hover:scale-[1.02]"
+                    onClick={() => setStep("create")}
+                    className="h-8 rounded-full px-3 text-[12px] font-medium text-white shadow-lg shadow-black/20 transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                     style={{ background: ACCENT }}
                   >
                     Create workspace →
@@ -367,41 +287,61 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
                 </div>
               )}
             </div>
-            </div>
+
           </div>
 
-          {/* Footer — sits directly below the glass card, sharing the same 86% width */}
-          <div className={`flex items-center justify-between text-[12px] transition-colors duration-300 ${textSub}`}>
-            <button className={`flex items-center gap-1 transition-colors duration-300 ${isDark ? "hover:text-white" : "hover:text-zinc-900"}`}>
-              English (United Kingdom) <ChevronDown className="w-3 h-3" />
+          {/* Frosted create bar — Figma rounded-bl/br glass foot */}
+          <button
+            type="button"
+            onClick={() => setStep("create")}
+            className="group relative w-full overflow-hidden rounded-b-[50px] border-2 border-t-0 border-white/20 bg-white/15 py-[17px] backdrop-blur-[15px] transition-all duration-300 hover:bg-white/40 focus-visible:bg-white/40 focus-visible:outline-none active:bg-white/40"
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 group-active:opacity-100"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(255,228,228,0.55) 0%, rgba(255,255,255,0.35) 45%, rgba(230,244,254,0.65) 100%)",
+              }}
+            />
+            <span className="relative flex items-center gap-3 px-8 py-2 text-[17px] font-normal leading-[1.2] text-white transition-colors duration-300 group-hover:text-[#0d2847] group-focus-visible:text-[#0d2847] group-active:text-[#0d2847]">
+              <Plus className="size-[26px] shrink-0" strokeWidth={2} />
+              Create new workspace
+            </span>
+          </button>
+
+          <div className="mt-3 flex items-center justify-between px-10 text-white">
+            <button
+              type="button"
+              className="flex items-center gap-2 text-[17px]"
+            >
+              <span>English (United Kingdom)</span>
+              <ChevronDown className="size-[17px] shrink-0" />
             </button>
-            <div className="flex items-center gap-2">
-              <span className={`cursor-pointer transition-colors duration-300 ${isDark ? "hover:text-white" : "hover:text-zinc-900"}`}>Privacy Policy</span>
-              <span className={`transition-colors duration-300 ${isDark ? "text-white/40" : "text-zinc-400"}`}>•</span>
-              <span className={`cursor-pointer transition-colors duration-300 ${isDark ? "hover:text-white" : "hover:text-zinc-900"}`}>Terms of Service</span>
+            <div className="flex items-center gap-2 text-[13px]">
+              <span className="cursor-pointer hover:opacity-80">Privacy Policy</span>
+              <span className="size-1 rounded-full bg-white/80" />
+              <span className="cursor-pointer hover:opacity-80">Terms of Service</span>
             </div>
           </div>
         </div>
         )}
 
-        {/* Bottom Add Integration pill — clamped to bottom, no bottom radius */}
         {step === "picker" && (
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[86%]">
+        <div
+          className="absolute bottom-0"
+          style={{ left: FRAME_INSET, width: CONTENT_W }}
+        >
           <button
             type="button"
             onClick={openModal}
-            className={`w-full h-11 rounded-t-2xl rounded-b-none border border-b-0 backdrop-blur-xl text-[13px] font-medium tracking-tight flex items-center justify-center gap-2 transition-colors duration-300 ${
-              isDark
-                ? "border-white/25 bg-white/[0.10] text-white hover:bg-white/[0.14]"
-                : "border-white/80 bg-white/70 text-zinc-900 hover:bg-white/90"
-            }`}
+            className="flex h-[77px] w-full items-center justify-center gap-2 rounded-t-[38px] rounded-b-none border border-b-0 border-white/40 bg-white/10 text-[17px] font-medium tracking-tight text-white backdrop-blur-[8px] transition-colors hover:bg-white/14"
           >
-            <Plus className="w-4 h-4" /> Add Integration
+            <Plus className="size-[19px]" /> Add Integration
           </button>
         </div>
         )}
 
-        {/* Create workspace — step 2/7 */}
         {step === "create" && (
           <CreateWorkspacePanel
             isDark={isDark}
@@ -414,7 +354,6 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
           />
         )}
 
-        {/* Integrations modal */}
         <AnimatePresence>
           {modalOpen && (
             <motion.div
@@ -435,59 +374,55 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
                 animate={{ scale: 1, y: 0, opacity: 1 }}
                 exit={{ scale: 0.96, y: 8, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 260, damping: 24 }}
-                className="relative w-[92%] max-w-[560px] flex flex-col items-end gap-2"
+                className="relative flex w-[560px] flex-col items-end gap-2"
               >
-                {/* Separate close pill above the card */}
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className={`w-11 h-11 rounded-full backdrop-blur-xl flex items-center justify-center transition-colors duration-300 ${
+                  className={`flex size-11 items-center justify-center rounded-full backdrop-blur-xl transition-colors duration-300 ${
                     isDark
                       ? "border border-white/30 bg-white/10 text-white/90 hover:bg-white/20"
                       : "border border-zinc-900/20 bg-white/70 text-zinc-900 hover:bg-white"
                   }`}
                   aria-label="Close"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="size-4" />
                 </button>
 
-                {/* Glass card */}
                 <div
-                  className={`w-full rounded-2xl backdrop-blur-[40px] shadow-2xl shadow-black/40 p-3.5 transition-colors duration-300 ${
-                    isDark ? "bg-white/[0.05] border border-white/15" : "bg-white/60 border border-white/70"
+                  className={`w-full rounded-2xl p-3.5 shadow-2xl shadow-black/40 backdrop-blur-[40px] transition-colors duration-300 ${
+                    isDark ? "border border-white/15 bg-white/[0.05]" : "border border-white/70 bg-white/60"
                   }`}
                 >
-                  {/* Header row */}
-                  <div className="flex items-center justify-between px-1 pt-1 pb-3">
+                  <div className="flex items-center justify-between px-1 pb-3 pt-1">
                     <h3 className={`text-[16px] font-normal tracking-tight transition-colors duration-300 ${textMain}`}>
                       Add following integrations to your stack
                     </h3>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex shrink-0 items-center gap-2">
                       <span className={`text-[13px] transition-colors duration-300 ${textMain}`}>Active</span>
                       <span
-                        className={`relative w-7 h-3.5 rounded-full flex items-center justify-end px-0.5 transition-colors duration-300 ${
+                        className={`relative flex h-3.5 w-7 items-center justify-end rounded-full px-0.5 transition-colors duration-300 ${
                           isDark ? "bg-white" : "bg-zinc-900"
                         }`}
                       >
-                        <span className={`w-2.5 h-2.5 rounded-full shadow transition-colors duration-300 ${isDark ? "bg-[#627C92]" : "bg-white"}`} />
+                        <span className={`size-2.5 rounded-full shadow transition-colors duration-300 ${isDark ? "bg-[#627C92]" : "bg-white"}`} />
                       </span>
                     </div>
                   </div>
 
-                  {/* Inner bordered container */}
                   <div
-                    className={`rounded-xl p-3 flex flex-col gap-3 transition-colors duration-300 ${
+                    className={`flex flex-col gap-3 rounded-xl p-3 transition-colors duration-300 ${
                       isDark ? "border border-white/25" : "border border-zinc-900/10"
                     }`}
                   >
                     <div
-                      className={`flex items-center gap-2 h-9 rounded-full px-3 transition-colors duration-300 ${
+                      className={`flex h-9 items-center gap-2 rounded-full px-3 transition-colors duration-300 ${
                         isDark
                           ? "border border-white/25 bg-white/[0.12]"
                           : "border border-zinc-900/10 bg-white/70"
                       }`}
                     >
-                      <Search className={`w-4 h-4 transition-colors duration-300 ${isDark ? "text-white" : "text-zinc-900"}`} />
+                      <Search className={`size-4 transition-colors duration-300 ${isDark ? "text-white" : "text-zinc-900"}`} />
                       <input
                         autoFocus
                         value={query}
@@ -511,18 +446,20 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
                             <button
                               type="button"
                               onClick={() => toggle(i.id)}
-                              className="w-full flex items-center gap-2.5 text-left group"
+                              className="group flex w-full items-center gap-2.5 text-left"
                             >
                               <span
-                                className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                className={`flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                                   checked
                                     ? "border-transparent"
-                                    : `${isDark ? "border-white/30" : "border-zinc-900/30"} group-hover:${isDark ? "border-white/60" : "border-zinc-900/60"}`
+                                    : isDark
+                                      ? "border-white/30 group-hover:border-white/60"
+                                      : "border-zinc-900/30 group-hover:border-zinc-900/60"
                                 }`}
                                 style={checked ? { background: ACCENT } : undefined}
                               >
                                 {checked && (
-                                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                  <Check className="size-3 text-white" strokeWidth={3} />
                                 )}
                               </span>
                               <span className={`text-[15px] font-normal tracking-tight transition-colors duration-300 ${textMain}`}>
@@ -540,10 +477,9 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
                     </ul>
                   </div>
 
-                  {/* Integration added row */}
                   <div className="flex items-center justify-end gap-1.5 pt-3 pr-1">
                     {draftSelected.length > 0 && (
-                      <Check className="w-4 h-4 text-[#01BB74]" strokeWidth={3} />
+                      <Check className="size-4 text-[#01BB74]" strokeWidth={3} />
                     )}
                     <span className={`text-[12px] transition-colors duration-300 ${textMain}`}>
                       {draftSelected.length > 0
@@ -553,11 +489,10 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
                   </div>
                 </div>
 
-                {/* Separate Save Integration pill button */}
                 <button
                   type="button"
                   onClick={save}
-                  className="h-11 px-6 rounded-[20px] text-white text-[15px] font-normal shadow-lg shadow-black/30 hover:brightness-110 transition"
+                  className="h-11 rounded-[20px] px-6 text-[15px] font-normal text-white shadow-lg shadow-black/30 transition hover:brightness-110"
                   style={{ background: "#FF5126" }}
                 >
                   Save Integration
@@ -567,38 +502,13 @@ export function OdicciWorkspacePicker({ onNext }: { onNext?: () => void }) {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </OdicciBrowserFrame>
   );
 }
-
-function RefreshGlyph() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path
-        d="M12 7c0 2.76-2.24 5-5 5S2 9.76 2 7s2.24-5 5-5c1.38 0 2.63.56 3.54 1.46M10 2v3H7"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function LockGlyph() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <rect x="1.5" y="5.5" width="9" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.1" className="text-zinc-500" />
-      <path d="M3.5 5.5V3.5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.1" className="text-zinc-500" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 interface CreateWorkspacePanelProps {
   isDark: boolean;
   textMain: string;
   textSub: string;
-  textMuted: string;
   companyName: string;
   setCompanyName: (v: string) => void;
   onBack: () => void;
@@ -606,10 +516,8 @@ interface CreateWorkspacePanelProps {
 }
 
 /**
- * CreateWorkspacePanel — step 2/7 of onboarding. Rebuilt from the Figma
- * "Create Workspace_Fallback_Error" frame: a two-column layout pairing the
- * empty-state "Odicci workspaces" window (left) with the workspace creation
- * form, including the company-name validation error state shown in the design.
+ * CreateWorkspacePanel — Figma 713:199787 inside 1512×982 artboard (65:94009).
+ * Absolute inset matches wireframe: left 76 / top 156 / 1360×739.
  */
 function CreateWorkspacePanel({
   isDark,
@@ -620,7 +528,7 @@ function CreateWorkspacePanel({
   onBack,
   onNext,
 }: CreateWorkspacePanelProps) {
-  const [timezone, setTimezone] = useState("Europe/London (GMT/BST)");
+  const [timezone] = useState("Europe/London (GMT/BST)");
   const [companySize, setCompanySize] = useState("");
   const [hearAbout, setHearAbout] = useState("");
   const [useLogo, setUseLogo] = useState(true);
@@ -629,11 +537,9 @@ function CreateWorkspacePanel({
   const showError = touched && companyName.trim().length === 0;
   const initial = (companyName.trim()[0] || "W").toUpperCase();
 
-  const inputBase =
-    "w-full rounded-[10px] px-3 py-3 text-[14px] outline-none transition-colors duration-300";
-  const inputTheme = isDark
-    ? "bg-white/20 text-white placeholder-white/50"
-    : "bg-white/70 border border-zinc-900/10 text-zinc-900 placeholder-zinc-500";
+  const fieldBg = isDark ? "bg-white/20" : "bg-white/70 border border-zinc-900/10";
+  const fieldBgMuted = isDark ? "bg-white/15" : "bg-white/60 border border-zinc-900/10";
+  const labelClass = `text-[10px] leading-[1.2] transition-colors duration-300 ${textMain}`;
   const helpIconClass = isDark ? "text-white/40" : "text-zinc-400";
 
   return (
@@ -641,191 +547,196 @@ function CreateWorkspacePanel({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-[1100px] max-h-[86%]"
+      className="absolute"
+      style={{ left: 76, top: 156, width: 1360, height: 739 }}
     >
-      <div className="flex flex-col lg:flex-row items-stretch gap-5 lg:gap-8 h-full min-h-0">
-        {/* LEFT — "Odicci workspaces" window, empty/fallback state */}
-        <div className="hidden lg:flex flex-col w-[38%] shrink-0 rounded-xl overflow-hidden border border-[#205D9E]/50 shadow-xl shadow-black/20 h-full max-h-[520px]">
-          <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white shrink-0">
-            <div className="w-6 h-6 rounded bg-zinc-200 shrink-0" />
-            <span className="flex-1 text-center text-[13px] text-zinc-900 truncate">Odicci workspaces</span>
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[12px] shrink-0"
-              style={{ background: "#FF5126" }}
-            >
-              A
-            </div>
-          </div>
-          <div className="flex-1 min-h-0 flex items-center justify-center p-8 bg-[#F9FAFB]/80">
-            <div className="w-full h-full rounded-xl bg-white flex items-center justify-center">
-              <FigmaLinkIcon className="w-9 h-9 text-zinc-900" />
-            </div>
-          </div>
+      {/*
+        Figma 713:199787 — fixed 617 | 126 | 617 so the gap centre sits on
+        artboard x=756, matching the mesh’s middle vertical grid line.
+      */}
+      <WorkspacePreviewWindow title="Workspace Name" />
+
+      {/* Divider — centred on mesh middle line (panel x=680 → artboard 756) */}
+      <div
+        aria-hidden
+        className="absolute top-[19px] h-[701px] w-px -translate-x-1/2 bg-gradient-to-b from-white/10 via-white/50 to-white/10"
+        style={{ left: 680 }}
+      />
+
+      {/* RIGHT — create form (617×739 at x 743) */}
+      <div
+        className={`absolute left-[743px] top-0 flex h-[739px] w-[617px] flex-col items-center gap-[42px] rounded-[24px] border p-6 backdrop-blur-[2px] transition-colors duration-300 ${
+          isDark ? "border-white bg-[rgba(0,50,90,0.2)]" : "border-white/70 bg-white/60"
+        }`}
+      >
+        <div className="flex w-full flex-col gap-0.5">
+          <h2 className={`text-[28px] font-normal leading-[1.2] transition-colors duration-300 ${textMain}`}>
+            Create your workspace
+          </h2>
+          <p className={`text-[20px] font-normal leading-[1.2] transition-colors duration-300 ${isDark ? "text-[#a3aebb]" : textSub}`}>
+            Set up your workspace to get started with Odicci
+          </p>
         </div>
 
-        {/* Divider */}
-        <div className="hidden lg:block w-px self-stretch bg-gradient-to-b from-white/5 via-white/50 to-white/5" />
-
-        {/* RIGHT — Create workspace form */}
-        <div
-          className={`flex-1 min-w-0 rounded-3xl border p-5 md:p-6 flex flex-col gap-6 md:gap-8 backdrop-blur-sm h-full overflow-y-auto transition-colors duration-300 ${
-            isDark ? "border-white bg-[rgba(0,50,90,0.20)]" : "border-white/70 bg-white/60"
-          }`}
-        >
-          {/* Header */}
-          <div className="flex flex-col gap-0.5">
-            <h2 className={`text-[22px] md:text-[26px] font-normal leading-tight transition-colors duration-300 ${textMain}`}>
-              Create your workspace
-            </h2>
-            <p className={`text-[14px] md:text-[16px] transition-colors duration-300 ${isDark ? "text-[#A3AEBB]" : textSub}`}>
-              Set up your workspace to get started with Odicci
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-5 md:gap-6">
-            {/* Logo uploader */}
-            <div className="flex flex-col gap-2">
-              <label className={`text-[12px] transition-colors duration-300 ${textMain}`}>Upload your company logo</label>
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-12 h-12 md:w-[52px] md:h-[52px] rounded-full flex items-center justify-center text-white text-[18px] shrink-0"
-                  style={{ background: "linear-gradient(135deg, #FF6900 0%, #F54900 100%)" }}
-                >
-                  {initial}
-                </div>
-                <button
-                  type="button"
-                  className="flex-1 h-10 md:h-11 rounded-lg border border-zinc-200 bg-white text-zinc-900 text-[13px] md:text-[14px] flex items-center justify-center gap-2 hover:bg-zinc-50 transition-colors"
-                >
-                  <Upload className="w-3.5 h-3.5 text-zinc-500" /> Upload Image
-                </button>
-                <button
-                  type="button"
-                  className="h-10 md:h-11 px-3.5 rounded-lg text-[13px] md:text-[14px] shrink-0 transition-colors"
-                  style={{ background: "#E2E6EA", color: "#7A838C" }}
-                >
-                  Remove
-                </button>
-              </div>
-              <p className={`text-[11px] transition-colors duration-300 ${isDark ? "text-white/60" : "text-zinc-500"}`}>
-                *Png, *.jpeg files up to 10MB at least 400px by 400px
-              </p>
-
-              {/* Use this logo checkbox */}
-              <button
-                type="button"
-                onClick={() => setUseLogo((v) => !v)}
-                className="flex items-center gap-2 mt-1 text-left"
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-6">
+          {/* Logo upload */}
+          <div className="flex w-full flex-col gap-2">
+            <p className={labelClass}>Upload your company logo</p>
+            <div className="flex items-center gap-3">
+              <div
+                className="flex size-[52px] shrink-0 items-center justify-center rounded-full text-[20px] leading-[1.1] text-white"
+                style={{ backgroundImage: "linear-gradient(135deg, #FF6900 0%, #F54900 100%)" }}
               >
-                <span
-                  className={`w-4 h-4 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${
-                    useLogo ? "border-transparent" : isDark ? "border-white/40" : "border-zinc-400"
-                  }`}
-                  style={useLogo ? { background: "#FF5126" } : undefined}
-                >
-                  {useLogo && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-                </span>
-                <span className={`text-[12px] transition-colors duration-300 ${textMain}`}>
-                  Use this logo for your experiences
-                </span>
-              </button>
-            </div>
-
-            {/* Company Name */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <label className={`text-[12px] flex-1 transition-colors duration-300 ${textMain}`}>Company Name</label>
-                <HelpCircle className={`w-3.5 h-3.5 ${helpIconClass}`} />
+                {initial}
               </div>
-              <input
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                onBlur={() => setTouched(true)}
-                placeholder="Enter your company name"
-                className={`${inputBase} ${inputTheme}`}
-              />
-              {showError && (
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <AlertTriangle className="w-3 h-3 shrink-0" style={{ color: "#FFB0B0" }} />
-                  <span className="text-[12px]" style={{ color: "#FFB0B0" }}>
-                    You must add company name
-                  </span>
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex h-[35px] min-w-0 flex-1 items-center justify-center gap-0 rounded-lg border border-[#e8e8e8] bg-white px-3 py-2 text-[16px] leading-[1.2] text-[#090e15]"
+                  >
+                    <Upload className="mr-1 size-4 shrink-0 text-zinc-500" />
+                    Upload Image
+                  </button>
+                  <button
+                    type="button"
+                    className="flex h-[35px] w-[83px] shrink-0 items-center justify-center rounded-lg border border-[#e2e6ea] bg-[#e2e6ea] px-3 py-2 text-[16px] leading-[1.2] text-[#7a838c]"
+                  >
+                    Remove
+                  </button>
                 </div>
-              )}
-            </div>
-
-            {/* Timezone */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between gap-2">
-                <label className={`text-[12px] transition-colors duration-300 ${textMain}`}>Timezone</label>
-                <HelpCircle className={`w-3.5 h-3.5 ${helpIconClass}`} />
-              </div>
-              <div className={`flex items-center gap-2 rounded-[10px] px-3 py-3 ${inputTheme}`}>
-                <span className="flex-1 text-[14px] truncate">{timezone}</span>
-                <ChevronDown className="w-4 h-4 opacity-60 shrink-0" />
-              </div>
-            </div>
-
-            {/* Company Size */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between gap-2">
-                <label className={`text-[12px] transition-colors duration-300 ${textMain}`}>Company Size</label>
-                <HelpCircle className={`w-3.5 h-3.5 ${helpIconClass}`} />
-              </div>
-              <button
-                type="button"
-                onClick={() => setCompanySize((s) => (s ? "" : "11–50 employees"))}
-                className={`flex items-center gap-2 rounded-[10px] px-3 py-3 text-left ${inputTheme}`}
-              >
-                <span className={`flex-1 text-[14px] truncate ${!companySize ? (isDark ? "text-[#BBC2CB]" : "text-zinc-500") : ""}`}>
-                  {companySize || "Select your company size"}
-                </span>
-                <ChevronDown className="w-4 h-4 opacity-60 shrink-0" />
-              </button>
-            </div>
-
-            {/* How did you hear */}
-            <div className="flex flex-col gap-2">
-              <label className={`text-[12px] transition-colors duration-300 ${textMain}`}>
-                How did you hear about Odicci?
-              </label>
-              <input
-                value={hearAbout}
-                onChange={(e) => setHearAbout(e.target.value)}
-                placeholder="Shopify App Store, Google, an event, a friend…"
-                className={`${inputBase} ${inputTheme}`}
-              />
-              <div className="flex items-start gap-1.5">
-                <Info className="w-3 h-3 mt-0.5 shrink-0" style={{ color: "#A3AEBB" }} />
-                <p className="text-[12px] leading-tight" style={{ color: "#A3AEBB" }}>
-                  You'll become the owner of this workspace. As the owner, you'll have full control of the
-                  workspace. You can change your user role later in Settings.
+                <p className={`text-[10px] leading-[1.2] ${isDark ? "text-white/60" : "text-zinc-500"}`}>
+                  *Png,*.jpeg files up to 10MB at least 400px by 400px
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onBack}
-              className="flex-1 h-11 rounded-full border text-[14px] transition-colors duration-300"
-              style={{ borderColor: "rgba(255,255,255,0.6)", background: "#A3AEBB", color: "#646464" }}
+          {/* Checkbox */}
+          <button
+            type="button"
+            onClick={() => setUseLogo((v) => !v)}
+            className="flex w-full items-center gap-1 text-left"
+          >
+            <span
+              className={`flex size-4 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                useLogo ? "border-transparent" : isDark ? "border-white/40" : "border-zinc-400"
+              }`}
+              style={useLogo ? { background: ACCENT } : undefined}
             >
-              Go Back
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTouched(true);
-                if (companyName.trim().length > 0) onNext?.();
-              }}
-              className="flex-1 h-11 rounded-full text-[14px] text-white shadow-lg shadow-black/25 hover:brightness-110 transition"
-              style={{ background: "#FF5126" }}
-            >
-              Create Workspace
-            </button>
+              {useLogo && <Check className="size-3 text-white" strokeWidth={3} />}
+            </span>
+            <span className={`text-[10px] leading-[1.2] ${textMain}`}>
+              Use this logo for your experiences
+            </span>
+          </button>
+
+          {/* Fields + actions */}
+          <div className="flex min-h-0 w-full flex-1 flex-col justify-between">
+            <div className="flex w-full flex-col gap-5">
+              {/* Company Name */}
+              <div className="flex w-full flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <label className={`min-w-0 flex-1 ${labelClass}`}>Company Name</label>
+                  <HelpCircle className={`size-4 shrink-0 ${helpIconClass}`} />
+                </div>
+                <input
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  onBlur={() => setTouched(true)}
+                  placeholder="Enter your company name"
+                  className={`w-full rounded-[10px] p-3 text-[12px] leading-[1.2] outline-none transition-colors duration-300 ${fieldBg} ${textMain} placeholder:text-white/50`}
+                />
+                {showError && (
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="size-3 shrink-0" style={{ color: "#FFB0B0" }} />
+                    <span className="text-[12px]" style={{ color: "#FFB0B0" }}>
+                      You must add company name
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Timezone */}
+              <div className="flex w-full flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <label className={labelClass}>Timezone</label>
+                  <HelpCircle className={`size-4 shrink-0 ${helpIconClass}`} />
+                </div>
+                <div className={`flex w-full items-center gap-2.5 rounded-[10px] p-3 ${fieldBg}`}>
+                  <span className={`min-w-0 flex-1 truncate text-[12px] leading-[1.2] ${textMain}`}>
+                    {timezone}
+                  </span>
+                  <ChevronDown className="size-[18px] shrink-0 opacity-70" />
+                </div>
+              </div>
+
+              {/* Company Size */}
+              <div className="flex w-full flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <label className={labelClass}>Company Size</label>
+                  <HelpCircle className={`size-4 shrink-0 ${helpIconClass}`} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCompanySize((s) => (s ? "" : "11–50 employees"))}
+                  className={`flex w-full items-center gap-2.5 rounded-[10px] p-3 text-left ${fieldBgMuted}`}
+                >
+                  <span
+                    className={`min-w-0 flex-1 truncate text-[12px] leading-[1.2] ${
+                      companySize ? textMain : isDark ? "text-white/70" : "text-zinc-500"
+                    }`}
+                  >
+                    {companySize || "Select your annual revenue (approx.)"}
+                  </span>
+                  <ChevronDown className="size-[18px] shrink-0 opacity-70" />
+                </button>
+              </div>
+
+              {/* Hear about */}
+              <div className="flex w-full flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <label className={labelClass}>How did you hear about Odicci?</label>
+                  <HelpCircle className={`size-4 shrink-0 ${helpIconClass}`} />
+                </div>
+                <div className="flex w-full flex-col gap-4">
+                  <input
+                    value={hearAbout}
+                    onChange={(e) => setHearAbout(e.target.value)}
+                    placeholder="Shopify App Store, Google, an event, a friend…"
+                    className={`w-full rounded-[10px] p-3 text-[12px] leading-[1.2] outline-none transition-colors duration-300 ${fieldBgMuted} ${textMain} placeholder:text-white/50`}
+                  />
+                  <div className="flex items-start gap-1">
+                    <Info className="mt-px size-3.5 shrink-0 text-[#bbc2cb]" />
+                    <p className="text-[10px] leading-[1.2] text-[#bbc2cb]">
+                      You&apos;ll become the owner of this workspace. As the owner, you&apos;ll have full
+                      control of the workspace. You can change your user role later in Settings
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex w-full items-center gap-2">
+              <button
+                type="button"
+                onClick={onBack}
+                className="flex flex-1 items-center justify-center rounded-[64px] border border-white/60 bg-[#d0d8e2] p-2.5 text-center text-[12px] leading-[1.2] text-[#646464] transition hover:brightness-95"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTouched(true);
+                  if (companyName.trim().length > 0) onNext?.();
+                }}
+                className="flex flex-1 items-center justify-center rounded-[64px] p-2.5 text-center text-[12px] leading-[1.2] text-white transition hover:brightness-110"
+                style={{ background: ACCENT }}
+              >
+                Create Workspace
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -844,6 +755,31 @@ function FigmaLinkIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+/** Shared left preview window — Figma 713:199788 */
+function WorkspacePreviewWindow({ title }: { title: string }) {
+  return (
+    <div className="absolute left-0 top-[101.5px] flex h-[536px] w-[617px] flex-col">
+      <div className="flex w-full items-center justify-between rounded-t-lg border border-[#dbe5ef] bg-white p-3">
+        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded">
+          <FigmaLinkIcon className="size-5 text-[#FF5126]" />
+        </div>
+        <p className="min-w-0 flex-1 text-center text-[12px] leading-[1.2] text-[#111]">{title}</p>
+        <div
+          className="flex size-6 shrink-0 items-center justify-center rounded-full text-[12px] leading-[1.2] text-white"
+          style={{ background: ACCENT }}
+        >
+          A
+        </div>
+      </div>
+      <div className="flex min-h-0 w-full flex-1 flex-col items-start rounded-b-xl bg-[#f9fafb] p-[60px]">
+        <div className="flex w-full items-center justify-center rounded-xl bg-white px-6 pb-6 pt-9">
+          <FigmaLinkIcon className="size-9 text-zinc-900" />
+        </div>
+      </div>
+    </div>
   );
 }
 

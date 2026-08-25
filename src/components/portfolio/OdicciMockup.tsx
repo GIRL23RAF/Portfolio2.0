@@ -1,18 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Upload, User, Check, Mail, Lock, Sparkles } from "lucide-react";
+import { Upload, User, Check, Mail, Lock, Sparkles, ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { OdicciBrowserFrame } from "@/components/portfolio/OdicciBrowserFrame";
 
 /**
  * OdicciMockup — pixel-authentic replica of the Odicci onboarding sandbox.
- *
- * Split canvas frame:
- *   LEFT  — Live Preview Sandbox (white card, updates per step)
- *   RIGHT — Setup Configurator (dark panel with 4-step wizard)
- *
- * `currentStep` (1..4) drives both columns via Framer Motion cross-fades.
+ * Shares OdicciBrowserFrame (1512×982 scaled) with other Odicci tabs.
  */
 
 const ACCENT = "#E9582C";
+const FONT = "Poppins, ui-sans-serif, system-ui, sans-serif";
 
 // Full onboarding phases:
 // 0 = Landing / Auth gate
@@ -34,31 +31,23 @@ export function OdicciMockup() {
   const back = () => setStep((s) => (s > 0 ? ((s - 1) as Step) : s));
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/40 bg-[#0B111E]">
-      {/* Browser chrome */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-[#0B111E]">
-        <span className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
-        <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
-        <span className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
-        <div className="ml-4 flex-1 max-w-sm text-[11px] tracking-tight rounded-md px-3 py-1 bg-white/5 text-white/60">
-          {step === 0 ? "odicci.com/signup" : step === 6 ? "odicci.com/studio" : "odicci.com/onboarding"}
-        </div>
-      </div>
-
-      {/* Canvas with ambient blobs + geometric grid */}
-      <div className="relative min-h-[620px] text-white overflow-hidden">
-        {/* Blobs */}
+    <OdicciBrowserFrame
+      tabLabel="odicci | Messaging Hub"
+      url={step === 0 ? "odicci.com/signup" : step === 6 ? "odicci.com/studio" : "odicci.com/onboarding"}
+      canvasClassName="bg-[#0B111E]"
+      showThemeToggle={false}
+    >
+      <div className="relative size-full overflow-hidden text-white" style={{ fontFamily: FONT }}>
         <div
-          className="absolute -bottom-40 -left-40 w-[560px] h-[560px] rounded-full blur-3xl opacity-40 pointer-events-none"
+          className="pointer-events-none absolute -bottom-40 -left-40 h-[560px] w-[560px] rounded-full opacity-40 blur-3xl"
           style={{ background: "radial-gradient(circle, #E9582C 0%, transparent 60%)" }}
         />
         <div
-          className="absolute -top-48 -right-32 w-[620px] h-[620px] rounded-full blur-3xl opacity-45 pointer-events-none"
+          className="pointer-events-none absolute -right-32 -top-48 h-[620px] w-[620px] rounded-full opacity-45 blur-3xl"
           style={{ background: "radial-gradient(circle, #3B4CCA 0%, transparent 65%)" }}
         />
-        {/* Technical line grid */}
         <div
-          className="absolute inset-0 opacity-[0.07] pointer-events-none"
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{
             backgroundImage:
               "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
@@ -66,7 +55,6 @@ export function OdicciMockup() {
           }}
         />
 
-        {/* Route content by phase */}
         <AnimatePresence mode="wait">
           {step === 0 && (
             <motion.div
@@ -75,7 +63,7 @@ export function OdicciMockup() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="relative"
+              className="absolute inset-0"
             >
               <LandingAuth onContinue={() => setStep(1)} />
             </motion.div>
@@ -88,7 +76,7 @@ export function OdicciMockup() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="relative"
+              className="absolute inset-0"
             >
               <SuccessScreen workspace={workspace} onReset={() => setStep(0)} />
             </motion.div>
@@ -101,7 +89,7 @@ export function OdicciMockup() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="relative flex flex-col md:flex-row gap-6 md:gap-8 p-6 md:p-10"
+              className="absolute inset-0 flex min-h-0 flex-col gap-6 p-6 md:flex-row md:gap-8 md:p-10"
             >
               {/* LEFT — Live Preview Sandbox */}
               <div className="md:w-1/2">
@@ -177,7 +165,7 @@ export function OdicciMockup() {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </OdicciBrowserFrame>
   );
 }
 
@@ -281,7 +269,7 @@ function LivePreview({
 
 function LandingAuth({ onContinue }: { onContinue: () => void }) {
   return (
-    <div className="relative flex flex-col md:flex-row gap-6 md:gap-10 p-6 md:p-10 min-h-[620px]">
+    <div className="relative flex h-full min-h-0 flex-col gap-6 p-6 md:flex-row md:gap-10 md:p-10">
       {/* Left — value props */}
       <div className="md:w-1/2 flex flex-col justify-center text-white">
         <span className="text-[11px] tracking-[0.24em] uppercase text-white/60">
@@ -467,14 +455,14 @@ function StepPalette({
         ].map((row) => (
           <div
             key={row.label}
-            className="bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-xs flex items-center justify-between"
+            className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-white"
           >
             <div className="flex items-center gap-3">
               <span
                 className="w-4 h-4 rounded-full border border-white/15"
                 style={{ backgroundColor: row.hex }}
               />
-              <span className="text-white/50 font-sans text-[11px] tracking-tight">
+              <span className="text-[11px] tracking-tight text-white/50">
                 {row.label}
               </span>
               <span className="tracking-tight">{row.hex}</span>
@@ -640,7 +628,7 @@ function SuccessScreen({
   onReset: () => void;
 }) {
   return (
-    <div className="relative flex flex-col items-center justify-center text-center min-h-[620px] p-10">
+    <div className="relative flex h-full min-h-0 flex-col items-center justify-center p-10 text-center">
       <motion.div
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
