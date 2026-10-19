@@ -18,6 +18,7 @@ import { CrcleProfile } from "@/components/portfolio/CrcleProfile";
 import { CrcleRadar } from "@/components/portfolio/CrcleRadar";
 import { CrcleSignalHome } from "@/components/portfolio/CrcleSignalHome";
 import { WireframeStage } from "@/components/portfolio/SiteWireframe";
+import { FirstDesignInspector } from "@/components/portfolio/firstDesign/FirstDesignInspector";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -151,12 +152,18 @@ const PROJECTS: Project[] = [
         outcome: "A short entry path that still feels complete in the demo.",
       },
       "Template Library": {
-        label: "First Design — Core loop",
-        subtitle: "Where the product actually lives",
-        overview: "The interactive heart of the case — edit this once the final flow is locked.",
-        challenge: "Show depth without burying the demo in edge cases.",
-        approach: "One primary loop, one delightful detail, zero dead ends in the happy path.",
-        outcome: "A memorable interaction judges can retell in one sentence.",
+        tabLabel: "Productive",
+        label: "First Design — Design system inspector",
+        subtitle: "Spec the loop before the prototype ships",
+        overview:
+          "A four-up wireframe grid holds the Productive frames — one hero onboarding path and three coming-soon slots — with a full-view inspector modal for dev annotations.",
+        challenge:
+          "Judges need to see system thinking, not just a single static mockup.",
+        approach:
+          "Grid preview for context; click the hero device to open inspector mode with tethered spec toasts and dashed connectors.",
+        outcome:
+          "An interactive design-system pass that explains the primary CTA, session picker, and screen title in one glance.",
+        customBody: <FirstDesignInspector />,
       },
     },
   },
