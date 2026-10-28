@@ -1,7 +1,14 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { forwardRef, useState, type MutableRefObject } from "react";
+import { forwardRef, useEffect, useState, type MutableRefObject } from "react";
+import { DesktopOnlyPill, useDesktopOnlyNudge } from "@/components/portfolio/DesktopOnlyNudge";
 import { MockupGradientRing } from "@/components/portfolio/MockupGradientRing";
+import {
+  RowHoverPreview,
+  useRowHoverPreview,
+  type HoverPreviewMedia,
+} from "@/components/portfolio/RowHoverPreview";
+import { isPhoneViewport } from "@/lib/viewport";
 
 // Tabs shown inside every expanded project row.
 // Add/remove entries here to change the case-study steps globally.
@@ -18,6 +25,10 @@ export interface Project {
   title: string;
   role: string;
   year: string;
+  /** Override the default four case-study steps. */
+  tabs?: readonly ProjectTab[];
+  /** Cursor-following still that appears on closed desktop rows (live araguiar.design). */
+  hoverPreview?: HoverPreviewMedia;
   // Per-tab content slots. Each returns whatever prototype/text you want to drop in later.
   content?: Partial<Record<Tab, ProjectTabContent>>;
 }
@@ -59,14 +70,31 @@ export function ProjectBentoStack({
   openSlug,
   onToggle,
   rowRefs,
+  nudgeSignal = 0,
 }: {
   projects: Project[];
   openSlug: string | null;
   onToggle: (slug: string) => void;
   rowRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
+  /** Bump to play the phone "desktop-only" nudge from outside (e.g. footer links). */
+  nudgeSignal?: number;
 }) {
+  const { controls: shake, pillVisible, nudge } = useDesktopOnlyNudge();
+
+  useEffect(() => {
+    if (nudgeSignal > 0) nudge();
+  }, [nudgeSignal, nudge]);
+
+  const handleToggle = (slug: string) => {
+    if (isPhoneViewport()) nudge();
+    else onToggle(slug);
+  };
+
   return (
-    <div className="relative z-10 flex w-full shrink-0 flex-col overflow-hidden rounded-[32px] border border-[#f3f4f6] bg-white/70 shadow-[0px_16px_48px_0px_rgba(0,0,0,0.05)] backdrop-blur-[2px]">
+    <motion.div
+      animate={shake}
+      className="relative z-10 flex w-full shrink-0 flex-col overflow-hidden rounded-[32px] border border-[#f3f4f6] bg-white/70 shadow-[0px_16px_48px_0px_rgba(0,0,0,0.05)] backdrop-blur-[2px] max-sm:rounded-[28px] sm:rounded-[37px]"
+    >
       {projects.map((p) => (
         <ProjectAccordion
           key={p.slug}
@@ -75,10 +103,15 @@ export function ProjectBentoStack({
           }}
           project={p}
           isOpen={openSlug === p.slug}
-          onToggle={() => onToggle(p.slug)}
+          onToggle={() => handleToggle(p.slug)}
         />
       ))}
-    </div>
+
+      <DesktopOnlyPill
+        visible={pillVisible}
+        className="bottom-3 left-1/2 -translate-x-1/2 sm:hidden"
+      />
+    </motion.div>
   );
 }
 
@@ -86,31 +119,52 @@ export const ProjectAccordion = forwardRef<HTMLDivElement, Props>(function Proje
   { project, isOpen, onToggle },
   ref,
 ) {
-  const [activeTab, setActiveTab] = useState<Tab>("Template Library");
+  const tabs = project.tabs?.length ? project.tabs : TABS;
+  const [activeTab, setActiveTab] = useState<Tab>(
+    () => (project.tabs?.[0] as Tab | undefined) ?? "Template Library",
+  );
   const tabContent = project.content?.[activeTab] ?? {};
+  const showTabChrome = tabs.length > 1;
+  const hover = useRowHoverPreview(project.hoverPreview, !isOpen);
 
   return (
-    <div ref={ref} className="border-b border-[#d1d5db] last:border-b-0">
+    <div ref={ref} className="border-b border-[#d1d5db] last:border-b-0 max-sm:border-[#ececec]">
       {/* Row header — Figma 530:151817 */}
       <button
         type="button"
         onClick={onToggle}
-        className="group flex w-full items-center justify-between gap-6 px-8 py-7 text-left"
+        onMouseEnter={hover.onMouseEnter}
+        onMouseMove={hover.onMouseMove}
+        onMouseLeave={hover.onMouseLeave}
+        className="group flex w-full items-center justify-between gap-7 px-[37px] py-8 text-left transition-[background] duration-300 max-sm:flex-col max-sm:items-stretch max-sm:gap-[18px] max-sm:p-6"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-8">
-          <span className="shrink-0 text-[14px] font-medium tracking-[1px] text-[#111]/70 tabular-nums">
+        <div className="flex min-w-0 flex-1 items-center gap-[37px] max-sm:gap-4">
+          <span className="shrink-0 text-[16px] font-medium tracking-[1px] text-[#111]/70 tabular-nums max-sm:text-[12px] max-sm:font-normal max-sm:tracking-normal max-sm:text-[#a3a3a6]">
             {project.id}
           </span>
-          <span className="truncate text-[24px] font-normal tracking-[-0.5px] text-[#111] sm:text-[32px]">
+          <span className="truncate text-[24px] font-normal tracking-[-0.5px] text-[#111] max-sm:text-[28px] max-sm:leading-[34px] max-sm:tracking-normal sm:text-[37px]">
             {project.title}
           </span>
         </div>
-        <div className="hidden shrink-0 items-center justify-end gap-4 text-[14px] text-[#111]/70 sm:flex">
-          <span className="text-right">{project.role}</span>
-          <span className="font-light text-[#111]/70">|</span>
+        <div className="flex shrink-0 items-center justify-end gap-[18px] text-[16px] text-[#111]/70 max-sm:gap-2.5 max-sm:text-[12px] max-sm:text-[#76767a]">
+          <span className="text-right max-sm:flex-1 max-sm:text-left max-sm:leading-5">
+            {project.role}
+          </span>
+          <span className="font-light text-[#111]/70 max-sm:font-normal max-sm:text-[#999]">|</span>
           <span className="tabular-nums">{project.year}</span>
         </div>
       </button>
+
+      {project.hoverPreview ? (
+        <RowHoverPreview
+          open={hover.open}
+          media={project.hoverPreview}
+          x={hover.x}
+          y={hover.y}
+          rotate={hover.rotate}
+          reduceMotion={hover.reduceMotion}
+        />
+      ) : null}
 
       {/* Expanded body — fixed length for consistency across projects */}
       <AnimatePresence initial={false}>
@@ -127,92 +181,98 @@ export const ProjectAccordion = forwardRef<HTMLDivElement, Props>(function Proje
               className="relative flex h-full flex-col px-6 py-6"
               style={{ height: EXPANDED_BODY_H }}
             >
-              {/* Tab switcher (capsule pills) */}
-              <div className="mb-6 flex shrink-0 justify-center">
-                <div className="inline-flex items-center gap-1 rounded-full border border-white bg-white/70 p-1 shadow-2xl shadow-slate-200/50 backdrop-blur-xl">
-                  {TABS.map((tab) => {
-                    const active = tab === activeTab;
-                    return (
-                      <button
-                        key={tab}
-                        type="button"
-                        onClick={() => setActiveTab(tab)}
-                        className={
-                          "rounded-full border px-4 py-1.5 text-xs font-medium tracking-tight transition-all duration-300 " +
-                          (active
-                            ? "border-black bg-black text-white hover:bg-black hover:text-white"
-                            : "border-transparent bg-transparent text-zinc-500 hover:border-black hover:bg-transparent hover:text-zinc-900")
-                        }
-                      >
-                        {project.content?.[tab]?.tabLabel ?? tab}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Absolute-positioned navigation arrows — 24px inset from accordion edges */}
-              <NavArrow
-                direction="prev"
-                onClick={() => {
-                  const i = TABS.indexOf(activeTab);
-                  setActiveTab(TABS[(i - 1 + TABS.length) % TABS.length]);
-                }}
-              />
-              <NavArrow
-                direction="next"
-                onClick={() => {
-                  const i = TABS.indexOf(activeTab);
-                  setActiveTab(TABS[(i + 1) % TABS.length]);
-                }}
-              />
-
-              {/* Full accordion width — top-aligned like Odicci phone rows (avoids crop) */}
-              <div className="mx-auto flex min-h-0 w-full flex-1 items-start px-[68px] pt-2">
-                <div className="grid w-full grid-cols-1 items-start gap-8 overflow-visible md:grid-cols-[minmax(0,1fr)_minmax(0,980px)] md:gap-10">
-                {/* LEFT — case-study copy beside prototype */}
-                <div className="flex max-h-[874px] min-h-0 flex-col overflow-y-auto overscroll-contain">
-                  <CaseStudyCopy project={project} tab={activeTab} content={tabContent} />
-                </div>
-
-                {/* RIGHT — prototype flush to frame edge; CRCLE phone nudges left for composition */}
-                <div className="relative flex w-full min-w-0 items-start justify-end">
-                  <div
-                    className={`flex w-full min-w-0 max-w-full items-start justify-end overflow-visible ${
-                      project.slug === "crcle" ? "relative left-[-112px]" : ""
-                    }`}
-                  >
-                    {tabContent.customBody ? (
-                      typeof tabContent.customBody === "function"
-                        ? tabContent.customBody({
-                            onNextTab: () => {
-                              const i = TABS.indexOf(activeTab);
-                              setActiveTab(TABS[(i + 1) % TABS.length]);
-                            },
-                            onPrevTab: () => {
-                              const i = TABS.indexOf(activeTab);
-                              setActiveTab(TABS[(i - 1 + TABS.length) % TABS.length]);
-                            },
-                            goToTab: (tab) => setActiveTab(tab),
-                          })
-                        : tabContent.customBody
-                    ) : (
-                      <MockupGradientRing className="aspect-[4/5] h-[874px] max-h-[874px] w-auto max-w-full overflow-hidden rounded-3xl">
-                        <div className="absolute inset-[1px] z-[1] flex items-center justify-center overflow-hidden rounded-[23px]">
-                          {tabContent.mockup ?? (
-                            <div className="px-6 text-center text-xs uppercase tracking-widest text-zinc-500">
-                              {project.slug} · {activeTab}
-                              <span className="mt-2 block font-normal normal-case tracking-normal text-zinc-400">
-                                Prototype slot — swap in your screen later
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </MockupGradientRing>
-                    )}
+              {showTabChrome ? (
+                <div className="mb-6 flex shrink-0 justify-center">
+                  <div className="inline-flex items-center gap-1 rounded-full border border-white bg-white/70 p-1 shadow-2xl shadow-slate-200/50 backdrop-blur-xl">
+                    {tabs.map((tab) => {
+                      const active = tab === activeTab;
+                      return (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setActiveTab(tab)}
+                          className={
+                            "rounded-full border px-4 py-1.5 text-xs font-medium tracking-tight transition-all duration-300 " +
+                            (active
+                              ? "border-black bg-black text-white hover:bg-black hover:text-white"
+                              : "border-transparent bg-transparent text-zinc-500 hover:border-black hover:bg-transparent hover:text-zinc-900")
+                          }
+                        >
+                          {project.content?.[tab]?.tabLabel ?? tab}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+              ) : (
+                <div className="mb-6 flex shrink-0 justify-center">
+                  <div className="inline-flex items-center rounded-full border border-white bg-white/70 p-1 shadow-2xl shadow-slate-200/50 backdrop-blur-xl">
+                    <span className="rounded-full border border-black bg-black px-4 py-1.5 text-xs font-medium tracking-tight text-white">
+                      {project.content?.[activeTab]?.tabLabel ?? activeTab}
+                    </span>
+                  </div>
                 </div>
+              )}
+
+              {showTabChrome ? (
+                <>
+                  <NavArrow
+                    direction="prev"
+                    onClick={() => {
+                      const i = tabs.indexOf(activeTab);
+                      setActiveTab(tabs[(i - 1 + tabs.length) % tabs.length]);
+                    }}
+                  />
+                  <NavArrow
+                    direction="next"
+                    onClick={() => {
+                      const i = tabs.indexOf(activeTab);
+                      setActiveTab(tabs[(i + 1) % tabs.length]);
+                    }}
+                  />
+                </>
+              ) : null}
+
+              {/* Full accordion width — top-aligned like Odicci phone rows (avoids crop) */}
+              <div className="mx-auto flex min-h-0 w-full flex-1 items-start overflow-visible px-4 pt-2 sm:px-8 lg:px-12 xl:px-[68px]">
+                  <div className="grid w-full min-w-0 grid-cols-1 items-start gap-8 overflow-x-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-8">
+                    <div className="flex max-h-[874px] min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain">
+                      <CaseStudyCopy project={project} tab={activeTab} content={tabContent} />
+                    </div>
+
+                    <div className="relative flex w-full min-w-0 items-start justify-end overflow-visible">
+                      <div className="ml-auto flex w-full min-w-0 max-w-full items-start justify-end overflow-visible">
+                        {tabContent.customBody ? (
+                          typeof tabContent.customBody === "function"
+                            ? tabContent.customBody({
+                                onNextTab: () => {
+                                  const i = tabs.indexOf(activeTab);
+                                  setActiveTab(tabs[(i + 1) % tabs.length]);
+                                },
+                                onPrevTab: () => {
+                                  const i = tabs.indexOf(activeTab);
+                                  setActiveTab(tabs[(i - 1 + tabs.length) % tabs.length]);
+                                },
+                                goToTab: (tab) => setActiveTab(tab),
+                              })
+                            : tabContent.customBody
+                        ) : (
+                          <MockupGradientRing className="aspect-[4/5] h-[874px] max-h-[874px] w-auto max-w-full overflow-hidden rounded-3xl">
+                            <div className="absolute inset-[1px] z-[1] flex items-center justify-center overflow-hidden rounded-[23px]">
+                              {tabContent.mockup ?? (
+                                <div className="px-6 text-center text-xs uppercase tracking-widest text-zinc-500">
+                                  {project.slug} · {activeTab}
+                                  <span className="mt-2 block font-normal normal-case tracking-normal text-zinc-400">
+                                    Prototype slot — swap in your screen later
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </MockupGradientRing>
+                        )}
+                      </div>
+                    </div>
+                  </div>
               </div>
             </div>
           </motion.div>
@@ -251,20 +311,20 @@ function CaseStudyCopy({
     "Replace this outcome — what shipped, what you learned, and what you’d iterate next.";
 
   return (
-    <div className="flex flex-col gap-[36px] py-0">
+    <div className="flex w-full min-w-0 flex-col gap-[36px] py-0">
       <div className="flex flex-col gap-5">
         <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400">
           {content.label ?? `${project.title} — ${tab}`}
         </span>
-        <h3 className="text-3xl font-medium leading-[1.15] tracking-tight text-zinc-900 md:text-4xl">
+        <h3 className="text-3xl font-medium leading-[1.15] tracking-tight text-zinc-900 md:text-[40px]">
           {content.subtitle ?? "Case study headline — edit me"}
         </h3>
         <p className="text-[15px] leading-7 text-zinc-500">{overview}</p>
       </div>
 
-      <TextBlock heading="Challenge">{challenge}</TextBlock>
-      <TextBlock heading="Approach">{approach}</TextBlock>
-      <TextBlock heading="Outcome">{outcome}</TextBlock>
+      {challenge.trim() ? <TextBlock heading="Challenge">{challenge}</TextBlock> : null}
+      {approach.trim() ? <TextBlock heading="Approach">{approach}</TextBlock> : null}
+      {outcome.trim() ? <TextBlock heading="Outcome">{outcome}</TextBlock> : null}
     </div>
   );
 }

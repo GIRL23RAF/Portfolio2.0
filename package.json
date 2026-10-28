@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "dev:5173": "vite dev --port 5173 --strictPort",
+    "preview:5173": "vite preview --port 5173 --strictPort",
     "preview:netlify": "bun scripts/serve-netlify-production.ts",
     "sync:netlify": "bun scripts/sync-netlify-production.ts",
     "build": "vite build",

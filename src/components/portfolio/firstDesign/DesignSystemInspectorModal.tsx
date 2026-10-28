@@ -1,8 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { CrclePhoneFrame } from "@/components/portfolio/CrclePhoneFrame";
-import { AnnotationLayer } from "./AnnotationLayer";
+import { ProductiveWireframePhone } from "./ProductiveWireframePhone";
 import { InspectorModalHeader } from "./InspectorModalHeader";
 import { INSPECTOR_FRAMES } from "./inspectorTypes";
 import { ProductiveFrameScreen } from "./ProductiveScreens";
@@ -11,45 +10,92 @@ type DesignSystemInspectorModalProps = {
   open: boolean;
   initialFrameIndex?: number;
   onClose: () => void;
+  isDevModeActive: boolean;
+  onToggleDevMode: () => void;
+  onFrameIndexChange: (index: number) => void;
+  /** Phone shell the dev-mode spec tethers attach to. */
+  phoneRef?: RefObject<HTMLDivElement | null>;
+  highlightHotspotId?: string | null;
+  onHotspotHover?: (id: string | null) => void;
 };
 
+const PHONE_W = 402;
+const PHONE_H = 874;
+/** Figma 2238:195139 — drawer inset from file mockup edge. */
+const CANVAS_INSET_PX = 24;
+const COLUMN_GAP_PX = 12;
+const MAX_COLUMN_W = 407;
+
+/**
+ * Left-pinned preview (Figma 2238:195139 / 2220:174982).
+ */
 export function DesignSystemInspectorModal({
   open,
   initialFrameIndex = 0,
   onClose,
+  isDevModeActive,
+  onToggleDevMode,
+  onFrameIndexChange,
+  phoneRef,
+  highlightHotspotId,
+  onHotspotHover,
 }: DesignSystemInspectorModalProps) {
   const [frameIndex, setFrameIndex] = useState(initialFrameIndex);
-  const [isDevModeActive, setIsDevModeActive] = useState(false);
-  const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
-  const deviceRef = useRef<HTMLDivElement>(null);
+  const [phoneScale, setPhoneScale] = useState(0.72);
+
+  const asideRef = useRef<HTMLElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   const frame = INSPECTOR_FRAMES[frameIndex];
-  const annotations = frame.annotations ?? [];
 
   useEffect(() => {
     if (open) setFrameIndex(initialFrameIndex);
   }, [open, initialFrameIndex]);
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  const setFrame = useCallback(
+    (index: number) => {
+      setFrameIndex(index);
+      onFrameIndexChange(index);
+    },
+    [onFrameIndexChange],
+  );
 
-  useEffect(() => {
-    if (!isDevModeActive) setActiveAnnotationId(null);
-  }, [isDevModeActive]);
+  const measurePhoneScale = useCallback(() => {
+    const aside = asideRef.current;
+    const header = headerRef.current;
+    const viewport = aside?.closest("[data-productive-design-viewport]") as HTMLElement | null;
+    if (!aside || !header || !viewport) return;
+
+    const inset = CANVAS_INSET_PX * 2;
+    const maxColW = Math.min(MAX_COLUMN_W, viewport.clientWidth - inset);
+    const columnH = aside.clientHeight;
+    const availH = columnH - header.offsetHeight - COLUMN_GAP_PX;
+    const byHeight = availH / PHONE_H;
+    const byWidth = maxColW / PHONE_W;
+    const next = Math.min(byHeight, byWidth, 1);
+    setPhoneScale(Math.max(0.48, next));
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    measurePhoneScale();
+    const aside = asideRef.current;
+    if (!aside) return;
+
+    const viewport = aside.closest("[data-productive-design-viewport]") as HTMLElement | null;
+    const ro = new ResizeObserver(() => measurePhoneScale());
+    ro.observe(aside);
+    if (viewport) ro.observe(viewport);
+    return () => ro.disconnect();
+  }, [open, frameIndex, measurePhoneScale]);
 
   const goPrev = useCallback(() => {
-    setFrameIndex((i) => (i - 1 + INSPECTOR_FRAMES.length) % INSPECTOR_FRAMES.length);
-  }, []);
+    setFrame((frameIndex - 1 + INSPECTOR_FRAMES.length) % INSPECTOR_FRAMES.length);
+  }, [frameIndex, setFrame]);
 
   const goNext = useCallback(() => {
-    setFrameIndex((i) => (i + 1) % INSPECTOR_FRAMES.length);
-  }, []);
+    setFrame((frameIndex + 1) % INSPECTOR_FRAMES.length);
+  }, [frameIndex, setFrame]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,80 +108,78 @@ export function DesignSystemInspectorModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose, goPrev, goNext]);
 
-  if (typeof document === "undefined") return null;
+  const phoneW = PHONE_W * phoneScale;
+  const phoneH = PHONE_H * phoneScale;
 
-  return createPortal(
+  return (
     <AnimatePresence>
       {open ? (
-        <motion.div
-          key="inspector-modal"
-          className="fixed inset-0 z-[200] flex flex-col bg-[#0b0f14]/95 p-4 sm:p-6 md:p-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+        <motion.aside
+          ref={asideRef}
+          key="device-drawer"
           role="dialog"
-          aria-modal
-          aria-label="Design system inspector"
+          aria-label="Device preview"
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          className="pointer-events-auto absolute z-50 flex flex-col overflow-hidden"
+          style={{
+            top: CANVAS_INSET_PX,
+            bottom: CANVAS_INSET_PX,
+            left: CANVAS_INSET_PX,
+            width: phoneW,
+            maxWidth: `calc(100% - ${CANVAS_INSET_PX * 2}px)`,
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onWheel={(e) => e.stopPropagation()}
         >
-          <InspectorModalHeader
-            frameIndex={frameIndex}
-            frameCount={INSPECTOR_FRAMES.length}
-            frameLabel={frame.label}
-            isDevModeActive={isDevModeActive}
-            onToggleDevMode={() => setIsDevModeActive((v) => !v)}
-            onPrev={goPrev}
-            onNext={goNext}
-            onClose={onClose}
-          />
+          <div className="flex h-full min-h-0 w-full flex-1 flex-col items-stretch gap-3">
+            <InspectorModalHeader
+              ref={headerRef}
+              className="mt-[3px] w-full shrink-0"
+              frameIndex={frameIndex}
+              frameCount={INSPECTOR_FRAMES.length}
+              frameLabel={frame.label}
+              isDevModeActive={isDevModeActive}
+              onToggleDevMode={onToggleDevMode}
+              onPrev={goPrev}
+              onNext={goNext}
+              onClose={onClose}
+            />
 
-          <div className="relative mx-auto mt-4 flex min-h-0 w-full max-w-[1400px] flex-1 items-center justify-center gap-6">
-            {isDevModeActive && frame.kind === "hero" ? (
-              <aside
-                className="hidden h-[min(72vh,720px)] w-[min(28%,420px)] shrink-0 overflow-hidden rounded-3xl border border-white/10 bg-[#121515] shadow-2xl lg:block"
-                aria-label="Design file preview"
+            <div
+              className="relative w-full min-h-0 flex-1 drop-shadow-[32px_32px_32px_rgba(16,24,40,0.2),16px_16px_16px_rgba(16,24,40,0.08)]"
+              style={{ minHeight: phoneH }}
+            >
+              <div
+                ref={phoneRef}
+                className="origin-top-left"
+                style={{
+                  width: PHONE_W,
+                  height: PHONE_H,
+                  transform: `scale(${phoneScale})`,
+                }}
               >
-                <div className="border-b border-white/10 px-4 py-3 text-xs font-medium text-white/50">
-                  Rfaea · Onboarding frame
-                </div>
-                <div
-                  className="h-full bg-[length:12px_12px] bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] p-6"
-                >
-                  <div className="mx-auto max-w-[240px] rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4 text-center text-[11px] leading-relaxed text-white/35">
-                    Linked Figma artboard — swap in embed or export when the file is wired to production.
-                  </div>
-                </div>
-              </aside>
-            ) : null}
-
-            <div className="relative flex min-h-0 flex-1 items-center justify-center">
-              <div ref={deviceRef} className="relative z-10">
-                <CrclePhoneFrame className="shadow-[0_32px_96px_rgba(0,0,0,0.55)]">
-                  <ProductiveFrameScreen
-                    frameId={frame.id}
-                    devMode={isDevModeActive && frame.kind === "hero"}
-                    highlightHotspotId={activeAnnotationId}
-                  />
-                </CrclePhoneFrame>
+                {frame.id === "onboarding" ? (
+                  <CrclePhoneFrame>
+                    <ProductiveFrameScreen
+                      frameId={frame.id}
+                      devMode={isDevModeActive && frame.kind === "hero"}
+                      highlightHotspotId={isDevModeActive ? highlightHotspotId : null}
+                      onHotspotHover={onHotspotHover}
+                    />
+                  </CrclePhoneFrame>
+                ) : (
+                  <ProductiveWireframePhone>
+                    <ProductiveFrameScreen frameId={frame.id} standalone={false} />
+                  </ProductiveWireframePhone>
+                )}
               </div>
-
-              {isDevModeActive && annotations.length > 0 ? (
-                <AnnotationLayer
-                  annotations={annotations}
-                  deviceRef={deviceRef}
-                  activeId={activeAnnotationId}
-                  onActiveChange={setActiveAnnotationId}
-                />
-              ) : null}
             </div>
           </div>
-
-          <p className="mt-4 text-center text-xs text-white/35">
-            {frame.label}
-            {frame.kind === "coming-soon" ? " · prototype slot" : ""}
-          </p>
-        </motion.div>
+        </motion.aside>
       ) : null}
-    </AnimatePresence>,
-    document.body,
+    </AnimatePresence>
   );
 }

@@ -1,6 +1,7 @@
 /** Serve .netlify-production-preview/ (mirrored Netlify production). */
 const root = new URL("../.netlify-production-preview/", import.meta.url);
-const port = Number(process.env.PORT ?? 5173);
+/** Default 5180 so 5173 stays free for local dev / vite preview (deploy candidate). */
+const port = Number(process.env.PORT ?? 5180);
 
 Bun.serve({
   port,
@@ -16,4 +17,4 @@ Bun.serve({
   },
 });
 
-console.log(`Netlify production preview → http://localhost:${port}/`);
+console.log(`Netlify production mirror (NOT deploy branch) → http://localhost:${port}/`);

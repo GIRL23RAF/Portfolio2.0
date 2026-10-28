@@ -50,9 +50,7 @@ function ModulesMark({ tall = false, soft = false }: { tall?: boolean; soft?: bo
   return (
     <div
       className={
-        tall
-          ? "inline-grid grid-cols-2 grid-rows-3 gap-0.5"
-          : "grid size-3.5 grid-cols-2 gap-0.5"
+        tall ? "inline-grid grid-cols-2 grid-rows-3 gap-0.5" : "grid size-3.5 grid-cols-2 gap-0.5"
       }
       aria-hidden
     >
@@ -137,11 +135,7 @@ function TileRow({
   return (
     <div className={"flex min-h-0 w-full flex-1 gap-[2px] " + className}>
       {Array.from({ length: count }, (_, i) => (
-        <Tile
-          key={i}
-          mark={marks?.[i] ?? "dot"}
-          className="min-h-0 min-w-0 flex-1 self-stretch"
-        />
+        <Tile key={i} mark={marks?.[i] ?? "dot"} className="min-h-0 min-w-0 flex-1 self-stretch" />
       ))}
     </div>
   );
@@ -375,39 +369,48 @@ function BrowserPlate() {
 export function WireframeStage({
   expanded,
   children,
+  corner,
 }: {
   expanded: boolean;
   children: ReactNode;
+  corner?: ReactNode;
 }) {
   return (
     <div
       className={
         expanded
           ? "relative w-full overflow-x-hidden bg-[#f3f4f6] pb-0 pt-[96px]"
-          : "relative w-full overflow-hidden bg-[#f3f4f6]"
-      }
-      style={
-        expanded
-          ? undefined
-          : { aspectRatio: `${SITE_WIREFRAME_W} / ${SITE_WIREFRAME_H_COLLAPSED}` }
+          : "relative aspect-[1262/847] w-full overflow-hidden bg-[#f3f4f6] max-sm:z-30 max-sm:aspect-auto max-sm:min-h-dvh max-sm:overflow-visible"
       }
     >
       {/*
         Background fills the full stage (including expanded top padding).
         Cell band + browser plate stay top-aligned; solid #f3f4f6 covers the rest.
       */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 bg-[#f3f4f6]">
-        <div className="absolute inset-x-0 top-0 flex w-full flex-col gap-[2px] p-[2px]">
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[#f3f4f6]">
+        {/* Phones keep the desktop tile size (Figma 2250:24937) and crop the band instead. */}
+        <div className="absolute inset-x-0 top-0 flex w-full flex-col gap-[2px] p-[2px] max-sm:w-[1113px]">
           <JengaCellBand />
-          <BrowserPlate />
+          <div className="contents sm:hidden">
+            <JengaCellBand />
+          </div>
+          <div className="contents max-sm:hidden">
+            <BrowserPlate />
+          </div>
         </div>
       </div>
 
+      {corner ? (
+        <div className="absolute right-8 top-[78px] z-[1] max-sm:right-4">{corner}</div>
+      ) : null}
+
       {/* Content overlay — Figma 530:151856 */}
       {expanded ? (
-        <div className="relative z-10">{children}</div>
+        <div className="pointer-events-none relative z-10">{children}</div>
       ) : (
-        <div className="absolute inset-0 z-10 overflow-hidden">{children}</div>
+        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden max-sm:relative max-sm:inset-auto max-sm:overflow-visible">
+          {children}
+        </div>
       )}
     </div>
   );

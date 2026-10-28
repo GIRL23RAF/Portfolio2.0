@@ -14,9 +14,10 @@ const MOCKUPS = [
   mockupDarkWood,
 ] as const;
 
-/** Fixed tile + image footprint so every mockup reads at the same scale. */
-const TILE_CLASS = "w-[272px] h-[192px] shrink-0 rounded-[16px] overflow-hidden";
-const IMAGE_HEIGHT_PX = 158;
+/** Fixed tile + image footprint so every mockup reads at the same scale; phones are 20% up from the 150×106 set. */
+const TILE_CLASS =
+  "w-[180px] h-[127px] shrink-0 rounded-[12px] overflow-hidden sm:w-[272px] sm:h-[192px] sm:rounded-[16px]";
+const IMAGE_CLASS = "h-[104px] w-auto sm:h-[158px]";
 
 const AMBIENT_LAYOUTS: readonly { a: string; b: string; c: string }[] = [
   {
@@ -55,11 +56,10 @@ export function Marquee() {
 
   return (
     <div
-      className="relative w-full overflow-hidden bg-black"
-      style={{ aspectRatio: "1262 / 280" }}
+      className="relative aspect-[1262/280] w-full overflow-hidden bg-black max-sm:aspect-auto max-sm:h-[156px] max-sm:bg-[#0c0f14]"
     >
       <div className="absolute inset-0 flex items-center overflow-hidden">
-        <div className="relative flex w-max animate-marquee gap-6 px-6">
+        <div className="relative flex w-max animate-marquee gap-6 px-6 max-sm:gap-4 max-sm:px-4">
           {loop.map((src, i) => (
             <MockupTile key={i} src={src} variant={i % MOCKUPS.length} />
           ))}
@@ -76,7 +76,7 @@ function MockupTile({ src, variant }: { src: string; variant: number }) {
   return (
     <MockupGradientRing className={TILE_CLASS} ringDelay={ringDelay}>
       <div
-        className="absolute inset-[1px] z-0 overflow-hidden rounded-[16px] bg-black"
+        className="absolute inset-[1px] z-0 overflow-hidden rounded-[inherit] bg-black"
         style={{ ["--blob-delay" as string]: `${variant * 0.5}s` } as CSSProperties}
       >
         <div className={`absolute blur-2xl bg-black/70 mockup-tile-blob-a ${layout.a}`} />
@@ -85,12 +85,11 @@ function MockupTile({ src, variant }: { src: string; variant: number }) {
         <div className="absolute inset-0 bg-black/25" />
       </div>
 
-      <div className="absolute inset-[1px] z-[1] flex items-center justify-center overflow-hidden rounded-[16px]">
+      <div className="absolute inset-[1px] z-[1] flex items-center justify-center overflow-hidden rounded-[inherit]">
         <img
           src={src}
           alt=""
-          className="max-w-[94%] object-contain object-center select-none rounded-[16px]"
-          style={{ height: IMAGE_HEIGHT_PX, width: "auto" }}
+          className={`max-w-[94%] object-contain object-center select-none rounded-[inherit] ${IMAGE_CLASS}`}
           loading="lazy"
           draggable={false}
         />

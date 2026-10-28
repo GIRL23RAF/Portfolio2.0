@@ -1,4 +1,55 @@
+import { motion } from "framer-motion";
 import type { ReactNode } from "react";
+import { Moon, Sun } from "lucide-react";
+
+const TOGGLE_EASE = [0.22, 1, 0.36, 1] as const;
+
+/** Sun / moon switch above the device — live araguiar.design control. */
+export function CrcleThemeToggle({
+  light,
+  onToggle,
+  disabled = false,
+  className = "",
+}: {
+  light: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <motion.button
+      type="button"
+      role="switch"
+      aria-checked={light}
+      aria-label={light ? "Switch to dark mode" : "Switch to light mode"}
+      disabled={disabled}
+      onClick={onToggle}
+      className={`relative z-30 mb-2 flex h-8 w-[52px] shrink-0 items-center rounded-full border border-zinc-200/80 bg-white/75 p-0.5 shadow-[0_2px_8px_rgba(0,0,0,0.08)] backdrop-blur-sm disabled:pointer-events-none disabled:opacity-40 ${className}`}
+    >
+      <motion.span
+        aria-hidden
+        className="absolute inset-y-0.5 w-[calc(50%-2px)] rounded-full bg-zinc-100 shadow-sm"
+        initial={false}
+        animate={{ left: light ? 2 : "calc(50% + 0px)" }}
+        transition={{ duration: 0.22, ease: TOGGLE_EASE }}
+      />
+      <span
+        className={`relative z-[1] flex flex-1 items-center justify-center transition-colors duration-300 ${
+          light ? "text-zinc-800" : "text-zinc-400"
+        }`}
+      >
+        <Sun className="size-3.5" strokeWidth={2} aria-hidden />
+      </span>
+      <span
+        className={`relative z-[1] flex flex-1 items-center justify-center transition-colors duration-300 ${
+          light ? "text-zinc-400" : "text-zinc-800"
+        }`}
+      >
+        <Moon className="size-3.5" strokeWidth={2} fill="currentColor" aria-hidden />
+      </span>
+    </motion.button>
+  );
+}
 
 /**
  * Figma CRCLE artboard 257:62672 — 402×874 display.
@@ -17,7 +68,7 @@ export function CrclePhoneFrame({
 }) {
   return (
     <div
-      className={`relative mx-auto h-[874px] w-[402px] shrink-0 overflow-hidden rounded-[58px] ${className}`}
+      className={`relative ml-auto h-[874px] w-[402px] shrink-0 overflow-hidden rounded-[58px] ${className}`}
       style={{ clipPath: "inset(0 round 58px)" }}
       data-device="iphone-crcle-402x874"
     >

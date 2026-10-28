@@ -1,5 +1,4 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Sun } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
 import batteryIcon from "@/assets/crcle/battery.svg";
 import cellularIcon from "@/assets/crcle/cellular.svg";
@@ -26,7 +25,8 @@ import philosophyDivider from "@/assets/crcle/signal-home/philosophy-divider.svg
 import pulseIcon from "@/assets/crcle/signal-home/pulse.svg";
 import radarIcon from "@/assets/crcle/signal-home/radar.svg";
 import wifiIcon from "@/assets/crcle/wifi.svg";
-import { CrclePhoneFrame } from "@/components/portfolio/CrclePhoneFrame";
+import { CrclePhoneFrame, CrcleThemeToggle } from "@/components/portfolio/CrclePhoneFrame";
+import { useCrclePhoneLight } from "@/lib/crcle-phone-theme";
 import {
   CrcleBackButton,
   CrcleMoreButton,
@@ -61,8 +61,7 @@ export function CrcleSignalHome({
   const [signalStrength, setSignalStrength] = useState(10);
   /* Figma 322:118233 — Signal Features overlay on light Daily 3 */
   const [onboardingOpen, setOnboardingOpen] = useState(true);
-  /* Light default matches Signal Onboarding - Light; sun flips to dark Daily 3 */
-  const [isLightMode, setIsLightMode] = useState(true);
+  const [isLightMode, toggleLight] = useCrclePhoneLight();
   /** Fine-tune drawer completed (stage 3) */
   const tuned = signalStrength >= 90;
   /** Stage 1 photo → 1 bar; stage 2 location → 2 bars; fine-tune → 3 bars */
@@ -74,23 +73,8 @@ export function CrcleSignalHome({
   }, []);
 
   return (
-    <div className="relative ml-auto w-fit">
-      <motion.button
-        type="button"
-        aria-label={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
-        aria-pressed={isLightMode}
-        onClick={() => setIsLightMode((v) => !v)}
-        className="absolute left-1/2 -top-10 z-30 flex size-8 -translate-x-1/2 items-center justify-center border-0 bg-transparent p-0 shadow-none outline-none ring-0"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.92 }}
-      >
-        <Sun
-          strokeWidth={1.5}
-          className={`size-6 transition-colors duration-300 ${
-            isLightMode ? "fill-amber-400 text-amber-400" : "fill-none text-zinc-800"
-          }`}
-        />
-      </motion.button>
+    <div className="relative ml-auto flex w-fit flex-col items-center">
+      <CrcleThemeToggle light={isLightMode} onToggle={toggleLight} />
 
       <CrclePhoneFrame light={isLightMode}>
         <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#010211] transition-colors duration-300 [.crcle-phone--light_&]:bg-[var(--crcle-bg)]">
@@ -418,7 +402,8 @@ function SignalOnboarding({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.28, ease: EASE }}
-      className="absolute inset-0 z-[55] flex flex-col overflow-hidden rounded-[53px] bg-[rgba(2,3,29,0.6)] backdrop-blur-[8px]"
+      className="pointer-events-auto absolute inset-0 z-[63] flex flex-col overflow-hidden rounded-[53px] bg-[rgba(2,3,29,0.6)] backdrop-blur-[8px]"
+      style={{ clipPath: "inset(0 round 53px)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="signal-onboarding-title"

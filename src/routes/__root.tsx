@@ -78,9 +78,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Selected Work — Portfolio" },
-      { name: "description", content: "A single, fluidly scrolling portfolio of deliberate case studies in engineering and design." },
+      {
+        name: "description",
+        content:
+          "A single, fluidly scrolling portfolio of deliberate case studies in engineering and design.",
+      },
       { property: "og:title", content: "Selected Work — Portfolio" },
-      { property: "og:description", content: "A single, fluidly scrolling portfolio of deliberate case studies in engineering and design." },
+      {
+        property: "og:description",
+        content:
+          "A single, fluidly scrolling portfolio of deliberate case studies in engineering and design.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -93,9 +101,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600&family=Poppins:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=M+PLUS+Rounded+1c:wght@500;700&family=Montserrat:wght@300;400;500;600&family=Poppins:wght@400;500;600;700&display=swap",
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+    ],
+    scripts: [
+      {
+        // Sizes the interactive hero's fallback grid before hydration so it doesn't flash 12 rows.
+        children:
+          '(function(){var pad=2,gap=2,w=document.documentElement.clientWidth,h=window.innerHeight,innerW=Math.max(0,w-pad*2),innerH=Math.max(0,h-pad*2),cols=w<640?Math.max(4,Math.round((innerW+gap)/66)):14,cellW=(innerW-gap*(cols-1))/cols,rows=Math.max(1,Math.round((innerH+gap)/(cellW+gap))),cellH=(innerH-gap*(rows-1))/rows,root=document.documentElement;root.style.setProperty("--hero-cols",String(cols));root.style.setProperty("--hero-rows",String(rows));root.style.setProperty("--hero-cell-w",cellW+"px");root.style.setProperty("--hero-cell-h",cellH+"px");})();',
+      },
     ],
   }),
   shellComponent: RootShell,

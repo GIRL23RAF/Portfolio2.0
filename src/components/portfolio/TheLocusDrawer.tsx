@@ -1,25 +1,35 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode } from "react";
 import locusCinemaIcon from "@/assets/crcle/locus/cinema.svg";
 import locusCloseIcon from "@/assets/crcle/locus/close-x.svg";
 import locusCoffeeIcon from "@/assets/crcle/locus/coffee.svg";
 import locusCrosshairIcon from "@/assets/crcle/locus/crosshair.svg";
+import locusCrosshairDarkIcon from "@/assets/crcle/locus/crosshair-dark.svg";
+import locusDeleteIcon from "@/assets/crcle/locus/delete.svg";
 import locusDinnerAIcon from "@/assets/crcle/locus/dinner-a.svg";
 import locusDinnerBIcon from "@/assets/crcle/locus/dinner-b.svg";
+import locusEditIcon from "@/assets/crcle/locus/edit.svg";
 import locusIcecreamAIcon from "@/assets/crcle/locus/icecream-a.svg";
 import locusIcecreamBIcon from "@/assets/crcle/locus/icecream-b.svg";
 import locusMoonAccentIcon from "@/assets/crcle/locus/moon-accent.svg";
+import locusMoonDarkIcon from "@/assets/crcle/locus/moon-dark.svg";
 import locusMoonFilledIcon from "@/assets/crcle/locus/moon-filled.svg";
 import locusPinIcon from "@/assets/crcle/locus/pin.svg";
+import locusPinDarkIcon from "@/assets/crcle/locus/pin-dark.svg";
 import locusPinRedIcon from "@/assets/crcle/locus/pin-red.svg";
 import locusPinSmIcon from "@/assets/crcle/locus/pin-sm.svg";
 import locusPizzaIcon from "@/assets/crcle/locus/pizza.svg";
 import locusPlusIcon from "@/assets/crcle/locus/plus.svg";
-import locusRainFillIcon from "@/assets/crcle/locus/rain-fill.svg";
+import locusPlusDarkIcon from "@/assets/crcle/locus/plus-dark.svg";
+import locusRainResponseIcon from "@/assets/crcle/locus/rain-response.svg";
+import locusRaincheckCloudIcon from "@/assets/crcle/locus/raincheck-cloud.svg";
 import locusSendLightIcon from "@/assets/crcle/locus/send-light.svg";
+import locusSunDarkIcon from "@/assets/crcle/locus/sun-dark.svg";
 import locusSunDuotoneIcon from "@/assets/crcle/locus/sun-duotone.svg";
 import locusSunFillIcon from "@/assets/crcle/locus/sun-fill.svg";
-import locusThumbsUpIcon from "@/assets/crcle/locus/thumbs-up.svg";
+import locusThumbsResponseIcon from "@/assets/crcle/locus/thumbs-response.svg";
+import locusYoureInDarkIcon from "@/assets/crcle/locus/youre-in-dark.svg";
+import locusYoureInLightIcon from "@/assets/crcle/locus/youre-in-light.svg";
 
 const FONT = "Montserrat, ui-sans-serif, system-ui, sans-serif";
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -182,14 +192,45 @@ type TheLocusDrawerProps = {
   open: boolean;
   onClose: () => void;
   onSendSignal: (payload: LocusSignalPayload) => void;
+  presetActivityId?: LocusActivityId;
+  draft?: LocusSignalPayload | null;
 };
 
-export function TheLocusDrawer({ open, onClose, onSendSignal }: TheLocusDrawerProps) {
+export function TheLocusDrawer({
+  open,
+  onClose,
+  onSendSignal,
+  presetActivityId,
+  draft = null,
+}: TheLocusDrawerProps) {
   const [tab, setTab] = useState<LocusTab>("intent");
   const [activityId, setActivityId] = useState<LocusActivityId | null>(null);
   const [when, setWhen] = useState<LocusWhen>("Tonight");
   const [timeOfDay, setTimeOfDay] = useState<LocusTimeOfDay>("evening");
   const [location, setLocation] = useState("Nearby café");
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setTab("intent");
+      setActivityId(null);
+      setWhen("Tonight");
+      setTimeOfDay("evening");
+      setLocation("Nearby café");
+      return;
+    }
+    if (draft) {
+      setActivityId(draft.activityId);
+      setWhen(draft.when);
+      setTimeOfDay(draft.timeOfDay);
+      setLocation(draft.location);
+      setTab("venue");
+      return;
+    }
+    if (presetActivityId) {
+      setActivityId(presetActivityId);
+      setTab("venue");
+    }
+  }, [open, presetActivityId, draft]);
 
   const selectActivity = (id: LocusActivityId) => {
     setActivityId(id);
@@ -457,10 +498,12 @@ export function TheLocusDrawer({ open, onClose, onSendSignal }: TheLocusDrawerPr
 }
 
 export type SignalCardStatus = "pending" | "accepted" | "raincheck";
+export type SignalCardDirection = "sent" | "received";
 
 export type SignalCardModel = LocusSignalPayload & {
   id: string;
   status: SignalCardStatus;
+  direction: SignalCardDirection;
 };
 
 const TIME_GLYPH: Record<
@@ -488,153 +531,234 @@ export function SignalCard({
   onAccept,
   onRaincheck,
   onCounterPropose,
+  onDelete,
+  onEdit,
+  counterpartyName = "Jane",
+  isLight = false,
 }: {
   signal: SignalCardModel;
   onAccept: () => void;
   onRaincheck: () => void;
   onCounterPropose: () => void;
+  onDelete?: () => void;
+  onEdit?: () => void;
+  counterpartyName?: string;
+  isLight?: boolean;
 }) {
-  const [showActions, setShowActions] = useState(false);
-  const [counterText, setCounterText] = useState("Try tomorrow instead?");
+  const [counterText, setCounterText] = useState("Try tomorrow instead");
+  const [showResponse, setShowResponse] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const activity = ACTIVITIES.find((a) => a.id === signal.activityId) ?? ACTIVITIES[1];
   const timeGlyph = TIME_GLYPH[signal.timeOfDay];
-  const prompt = `Up for ${signal.activityLabel} ${signal.when.toLowerCase()}?`;
+  const isSent = signal.direction === "sent";
+  const receivedLight = isLight && !isSent;
+  const canRespond = !isSent && signal.status === "pending";
+  const canEdit = isSent && signal.status !== "raincheck";
+  const responseOpen = canRespond && showResponse;
+  const editOpen = canEdit && showEdit;
+  const prompt = isSent
+    ? `Up for ${signal.activityLabel.toLowerCase()} ${signal.when.toLowerCase()} ${signal.timeOfDay}?`
+    : `Up for ${signal.activityLabel} ${signal.when.toLowerCase()}?`;
+  const timeIcon =
+    isSent && signal.timeOfDay === "evening"
+      ? locusMoonDarkIcon
+      : isSent && signal.timeOfDay === "morning"
+        ? locusSunDarkIcon
+        : timeGlyph.icon;
 
   return (
     <div
-      className="relative flex w-full max-w-[284px] flex-col items-start gap-1 self-start"
-      onMouseEnter={() => signal.status === "pending" && setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
+      className={`relative flex w-full max-w-[286px] flex-col ${
+        isSent ? "items-end self-end gap-2" : "items-start self-start gap-3"
+      }`}
     >
-      <AnimatePresence initial={false}>
-        {showActions && signal.status === "pending" ? (
+      <AnimatePresence>
+        {editOpen ? (
           <motion.div
-            initial={{ opacity: 0, y: 4, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: 2, height: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden"
+            key="signal-edit-toolbar"
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: EASE }}
+            className="flex h-14 items-center gap-3 rounded-[56px] bg-white/15 p-3"
           >
-            <div className="dock-glass relative flex h-14 items-center gap-3 overflow-hidden rounded-[56px] border border-white/15 bg-white/5 p-3 shadow-2xl backdrop-blur-sm">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 z-0 rounded-[56px] bg-gradient-to-b from-white/12 via-transparent to-transparent"
+            <button
+              type="button"
+              aria-label="Edit signal"
+              onClick={() => {
+                setShowEdit(false);
+                onEdit?.();
+              }}
+              className="flex size-6 shrink-0 items-center justify-center"
+            >
+              <img alt="" src={locusEditIcon} className="size-6 max-w-none" draggable={false} />
+            </button>
+            <button
+              type="button"
+              aria-label="Delete signal"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowEdit(false);
+                onDelete?.();
+              }}
+              className="flex size-6 shrink-0 items-center justify-center"
+            >
+              <img
+                alt=""
+                src={locusDeleteIcon}
+                className="h-5 w-[18px] max-w-none object-contain"
+                draggable={false}
               />
-              <div className="dock-glass-lens z-0 opacity-25" aria-hidden />
-              {/* Figma 984:85497 — thumbs-up + rain */}
-              <button
-                type="button"
-                aria-label="I'm down"
-                onClick={onAccept}
-                className="relative z-[1] flex size-8 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10"
-                title="I'm down"
-              >
-                <span className="absolute inset-[1.75%_9.57%_0_12.5%]">
-                  <img
-                    alt=""
-                    src={locusThumbsUpIcon}
-                    className="absolute inset-0 size-full max-w-none"
-                    draggable={false}
-                  />
-                </span>
-              </button>
-              <button
-                type="button"
-                aria-label="Raincheck"
-                onClick={onRaincheck}
-                className="relative z-[1] flex size-8 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10"
-                title="Raincheck"
-              >
-                <span className="absolute inset-[16.65%_12.5%_12.5%_12.5%]">
-                  <img
-                    alt=""
-                    src={locusRainFillIcon}
-                    className="absolute inset-0 size-full max-w-none"
-                    draggable={false}
-                  />
-                </span>
-              </button>
-            </div>
+            </button>
+          </motion.div>
+        ) : null}
+        {responseOpen ? (
+          <motion.div
+            key="signal-response-pill"
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: EASE }}
+            className="crcle-signal-response-pill relative flex h-[58px] w-fit items-center gap-3 overflow-hidden rounded-[56px] p-3"
+          >
+            <button
+              type="button"
+              aria-label="I'm down"
+              title="I'm down"
+              onClick={() => {
+                setShowResponse(false);
+                onAccept();
+              }}
+              className="relative z-[1] flex size-8 shrink-0 items-center justify-center transition active:scale-95"
+            >
+              <img
+                alt=""
+                src={locusThumbsResponseIcon}
+                className="crcle-signal-response-thumb size-8 max-w-none object-contain"
+                draggable={false}
+              />
+            </button>
+            <button
+              type="button"
+              aria-label="Raincheck"
+              title="Raincheck"
+              onClick={() => {
+                setShowResponse(false);
+                onRaincheck();
+              }}
+              className="relative z-[1] flex size-8 shrink-0 items-center justify-center transition active:scale-95"
+            >
+              <img
+                alt=""
+                src={locusRainResponseIcon}
+                className="size-8 max-w-none object-contain"
+                draggable={false}
+              />
+            </button>
           </motion.div>
         ) : null}
       </AnimatePresence>
 
-      {/* Figma 769:205972 — signal panel */}
       <div
-        role="button"
-        tabIndex={0}
-        onClick={() => signal.status === "pending" && setShowActions((v) => !v)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            if (signal.status === "pending") setShowActions((v) => !v);
-          }
-        }}
-        className="crcle-signal-card flex w-full cursor-pointer flex-col gap-6 rounded-tl-[36px] rounded-tr-[36px] rounded-br-[36px] rounded-bl-[4px] p-4 text-left transition"
+        className={`crcle-signal-card flex w-full flex-col p-4 text-left ${
+          isSent
+            ? "crcle-signal-card--sent gap-6 rounded-tl-[36px] rounded-tr-[36px] rounded-br-[4px] rounded-bl-[36px]"
+            : `crcle-signal-card--received gap-6 rounded-tl-[36px] rounded-tr-[36px] rounded-br-[36px] rounded-bl-[4px]${
+                receivedLight ? " crcle-signal-card--received-light" : ""
+              }`
+        }`}
       >
         <div className="flex w-full items-start justify-between">
-          <span className="relative block size-6 shrink-0">{activity.icon}</span>
-          <span className="relative block size-6 shrink-0">
-            <span className="absolute inset-[12.5%]">
-              <img
-                alt=""
-                src={locusCrosshairIcon}
-                className="absolute inset-[-5.56%] size-[111.12%] max-w-none"
-                draggable={false}
-              />
-            </span>
+          <span className="crcle-signal-card-icon relative block size-6 shrink-0">{activity.icon}</span>
+          <span className="crcle-signal-card-crosshair relative block size-6 shrink-0">
+            <img
+              alt=""
+              src={isSent ? locusCrosshairDarkIcon : locusCrosshairIcon}
+              className="size-6 max-w-none"
+              draggable={false}
+            />
           </span>
         </div>
 
         <div className="flex w-full flex-col gap-3">
           <p
-            className="w-full text-[16px] font-semibold leading-[1.4] text-[#f7f6f2]"
+            className="crcle-signal-card-prompt w-full text-[16px] font-semibold leading-[1.4]"
             style={{ fontFamily: FONT }}
           >
             {prompt}
           </p>
 
-          <div className="flex w-full -translate-y-[10px] items-center justify-center gap-2">
-            <span className="crcle-glass-btn relative flex size-[44px] shrink-0 items-center justify-center overflow-hidden rounded-[24px]">
+          <div className="flex w-full items-start justify-center gap-2">
+            <span
+              className={`crcle-signal-card-time flex shrink-0 items-center justify-center rounded-[24px] ${
+                isSent
+                  ? "border border-[rgba(2,3,29,0.3)] bg-[rgba(247,246,242,0.4)] p-2.5"
+                  : receivedLight
+                    ? "border border-[rgba(0,0,0,0.25)]"
+                    : "size-[46px]"
+              }`}
+            >
               <img
                 alt=""
-                src={timeGlyph.icon}
-                className={`relative z-[1] size-6 max-w-none object-contain ${
-                  signal.timeOfDay === "evening"
-                    ? "-translate-x-0.5 -translate-y-px"
-                    : ""
-                }`}
+                src={timeIcon}
+                className="size-6 max-w-none object-contain object-center"
                 draggable={false}
               />
             </span>
 
-            <div className="crcle-glass-btn flex h-[50px] min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-[24px] py-1 pl-3 pr-1">
+            <div
+              className={`crcle-signal-card-venue flex min-w-0 flex-1 items-center rounded-[24px] ${
+                isSent
+                  ? "h-11 gap-1.5 py-0.5 pl-3 pr-1"
+                  : receivedLight
+                    ? ""
+                    : "gap-1.5 py-1 pl-3 pr-1"
+              }`}
+            >
               <img
                 alt=""
-                src={locusPinRedIcon}
-                className="relative z-[1] size-4 shrink-0 object-contain"
+                src={isSent ? locusPinDarkIcon : locusPinRedIcon}
+                className="size-4 shrink-0 object-contain"
                 draggable={false}
               />
               <span
-                className="relative z-[1] min-w-0 flex-1 truncate text-[13px] leading-[1.4] text-[rgba(247,246,242,0.85)]"
+                className="crcle-signal-card-venue-text min-w-0 flex-1 truncate text-[13px] leading-[1.4]"
                 style={{ fontFamily: FONT }}
               >
                 {signal.location}
               </span>
               <button
                 type="button"
-                aria-label="Respond to signal"
-                aria-expanded={showActions}
-                disabled={signal.status !== "pending"}
+                aria-label={
+                  isSent
+                    ? showEdit
+                      ? "Hide edit options"
+                      : "Edit signal"
+                    : showResponse
+                      ? "Hide response options"
+                      : "Show response options"
+                }
+                aria-expanded={isSent ? showEdit : showResponse}
+                disabled={!isSent && !canRespond}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (signal.status === "pending") setShowActions((v) => !v);
+                  if (canRespond) setShowResponse((v) => !v);
+                  if (canEdit) setShowEdit((v) => !v);
                 }}
-                className="crcle-glass-btn relative z-[1] flex size-[42px] shrink-0 items-center justify-center overflow-hidden rounded-[24px] transition hover:brightness-110 disabled:opacity-50"
+                className={`crcle-signal-card-plus relative flex shrink-0 items-center justify-center overflow-hidden transition hover:brightness-110 disabled:opacity-50 ${
+                  isSent
+                    ? "size-9 rounded-[24px] bg-[rgba(2,3,29,0.1)] p-2.5"
+                    : receivedLight
+                      ? "crcle-glass-btn size-9 rounded-[24px] p-2.5"
+                      : "crcle-glass-btn size-10 rounded-[40px] p-1 backdrop-blur-[12px]"
+                } ${showResponse && canRespond ? "is-open brightness-110" : ""}`}
               >
+                {!isSent && !receivedLight ? (
+                  <div className="dock-glass-lens opacity-40" aria-hidden />
+                ) : null}
                 <img
                   alt=""
-                  src={locusPlusIcon}
+                  src={isSent ? locusPlusDarkIcon : locusPlusIcon}
                   className="relative z-[1] size-5 max-w-none"
                   draggable={false}
                 />
@@ -643,55 +767,77 @@ export function SignalCard({
           </div>
         </div>
 
-        {signal.status === "accepted" ? (
-          <div className="flex w-full justify-center border-t border-white/10 pt-3">
-            <div
-              className="crcle-glass-btn crcle-glass-btn--success relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-full px-4"
-              aria-label="You're in"
-            >
-              <div className="dock-glass-lens opacity-35" aria-hidden />
-              <span className="relative z-[1] size-5 shrink-0">
-                <span className="absolute inset-[1.75%_9.57%_0_12.5%]">
-                  <img
-                    alt=""
-                    src={locusThumbsUpIcon}
-                    className="absolute inset-0 size-full max-w-none brightness-0 invert"
-                    draggable={false}
-                  />
+        {signal.status === "accepted" && !isSent ? (
+          <div className={`flex w-full justify-center ${receivedLight ? "pt-2" : "border-t border-white/10 pt-2"}`}>
+            {receivedLight ? (
+              <div className="flex items-center justify-center gap-2" aria-label="You're in">
+                <img alt="" src={locusYoureInLightIcon} className="size-8 shrink-0" draggable={false} />
+                <span
+                  className="whitespace-nowrap text-[13px] font-normal leading-[1.4] text-black"
+                  style={{ fontFamily: FONT }}
+                >
+                  You’re In
                 </span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2" aria-label="You're in">
+                <img alt="" src={locusYoureInDarkIcon} className="size-8 shrink-0" draggable={false} />
+                <span
+                  className="whitespace-nowrap text-[13px] font-normal leading-[1.4] text-[#0eb247]"
+                  style={{ fontFamily: FONT }}
+                >
+                  You’re In
+                </span>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {signal.status === "raincheck" && isSent ? (
+          <div className="flex w-full flex-col items-center gap-2">
+            <span className="size-[3px] shrink-0 rounded-full bg-[#02031d]" aria-hidden />
+            <div className="flex items-center justify-center gap-1.5">
+              <span className="relative flex size-8 shrink-0 items-center justify-center">
+                <img
+                  alt=""
+                  src={locusRaincheckCloudIcon}
+                  className="h-[24px] w-6 max-w-none"
+                  draggable={false}
+                />
               </span>
               <span
-                className="relative z-[1] text-[13px] font-medium text-[#0fc950]"
+                className="whitespace-nowrap text-center text-[13px] font-normal leading-[1.4] text-[#02031d]"
                 style={{ fontFamily: FONT }}
               >
-                You&apos;re In
+                {counterpartyName} Rainchecked
               </span>
             </div>
           </div>
         ) : null}
 
-        {signal.status === "raincheck" ? (
+        {signal.status === "raincheck" && !isSent ? (
           <div
-            className="flex items-center gap-2 border-t border-white/10 pt-3"
+            className="flex w-full items-center justify-between rounded-[36px] border border-[rgba(247,246,242,0.1)] bg-[#010211] py-1 pl-4 pr-1"
             onClick={(e) => e.stopPropagation()}
           >
             <input
               value={counterText}
               onChange={(e) => setCounterText(e.target.value)}
-              className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-[13px] text-[#f7f6f2] outline-none"
+              aria-label="Counter proposal"
+              className="h-9 min-w-0 w-[178px] flex-1 bg-transparent text-[13px] leading-[1.4] text-[#f7f6f2] outline-none placeholder:text-[#f7f6f2]"
               style={{ fontFamily: FONT }}
-              placeholder="Try tomorrow instead?"
+              placeholder="Try tomorrow instead"
             />
             <button
               type="button"
               aria-label="Send counter-proposal"
               onClick={onCounterPropose}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#f7f6f2]"
+              className="flex size-11 shrink-0 items-center justify-center rounded-[24px] p-2.5"
             >
               <img
                 alt=""
                 src={locusSendLightIcon}
-                className="size-5 max-w-none -translate-x-[1.5px] translate-y-[1.5px] object-contain"
+                className="size-6 max-w-none object-contain"
                 draggable={false}
               />
             </button>

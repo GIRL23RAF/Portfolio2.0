@@ -6,6 +6,7 @@ import cellularIcon from "@/assets/crcle/cellular.svg";
 import crcleLogo from "@/assets/crcle/crcle-logo.svg";
 import locusCloseIcon from "@/assets/crcle/locus/close-x.svg";
 import locusPlusIcon from "@/assets/crcle/locus/plus.svg";
+import closeAddIcon from "@/assets/crcle/onboarding/close-add.svg";
 import cameraIcon from "@/assets/crcle/profile/camera.svg";
 import datingCoffeeIcon from "@/assets/crcle/profile/dating-coffee.svg";
 import datingGroupWhiteIcon from "@/assets/crcle/profile/dating-group-white.svg";
@@ -29,7 +30,6 @@ import locationMapImg from "@/assets/crcle/profile/location-map.png";
 import lockFilledIcon from "@/assets/crcle/profile/lock-filled.svg";
 import loughboroughCrest from "@/assets/crcle/profile/loughborough-crest.png";
 import mapPinPreciseIcon from "@/assets/crcle/profile/map-pin-precise.svg";
-import profileLaptopIcon from "@/assets/crcle/profile/laptop.svg";
 import profileMaskGreenIcon from "@/assets/crcle/profile/mask-green.svg";
 import profileMaskIcon from "@/assets/crcle/profile/mask.svg";
 import masksTheaterIcon from "@/assets/crcle/profile/masks-theater.svg";
@@ -58,7 +58,8 @@ import logoRadioDotIcon from "@/assets/crcle/profile/logo-radio-dot.svg";
 import shareIcon from "@/assets/crcle/share.svg";
 import shareInnerIcon from "@/assets/crcle/share-inner.svg";
 import wifiIcon from "@/assets/crcle/wifi.svg";
-import { CrclePhoneFrame } from "@/components/portfolio/CrclePhoneFrame";
+import { CrclePhoneFrame, CrcleThemeToggle } from "@/components/portfolio/CrclePhoneFrame";
+import { useCrclePhoneLight } from "@/lib/crcle-phone-theme";
 import { CrcleMoreButton, CrclePrimaryDock } from "@/components/portfolio/CrcleChrome";
 import {
   useCrcleBroadcast,
@@ -175,13 +176,6 @@ const MOODS: {
       "Active during late hours; down for evening events, night calls, or late-night sessions.",
   },
   {
-    id: "collab",
-    label: "Collab",
-    icon: profileLaptopIcon,
-    description:
-      "Focused on co-working, side projects, brain-dumping ideas, or working together in real time.",
-  },
-  {
     id: "in_the_area",
     label: "In The Area",
     icon: profilePinIcon,
@@ -235,18 +229,22 @@ export function CrcleProfile({
   onGoToRadar?: () => void;
 } = {}) {
   const [broadcastMood, setBroadcastMood] = useCrcleBroadcast();
+  const [isLightMode, toggleLight] = useCrclePhoneLight();
   const [profile, setProfile] = useState<ProfileState>(() => ({
     ...INITIAL,
     broadcast: { ...INITIAL.broadcast, activeState: broadcastMood },
   }));
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const [onboardingOpen, setOnboardingOpen] = useState(true);
+  const dismissOnboarding = () => setOnboardingOpen(false);
 
   const socialCount = Object.values(profile.socials).filter(Boolean).length;
 
   return (
-    <div className="relative ml-auto w-fit">
-      <CrclePhoneFrame>
-        <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#010211]">
+    <div className="relative ml-auto flex w-fit flex-col items-center">
+      <CrcleThemeToggle light={isLightMode} onToggle={toggleLight} />
+      <CrclePhoneFrame light={isLightMode}>
+        <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#010211] transition-colors duration-300 [.crcle-phone--light_&]:bg-[var(--crcle-bg)]">
           <div className="relative min-h-0 flex-1">
             {/* Absolute scroll so the dock can sample this layer for backdrop-filter */}
             <div className="absolute inset-0 overflow-x-hidden overflow-y-auto px-3 pb-28 pt-[86px]">
@@ -264,13 +262,18 @@ export function CrcleProfile({
 
             {/* Status + wordmark float over content with a soft fade — no hard cutoff */}
             <div className="pointer-events-none absolute inset-x-0 top-0 z-20">
-              <div className="bg-gradient-to-b from-[#010211] from-40% via-[#010211]/85 to-transparent pb-8">
+              <div className="bg-gradient-to-b from-[#010211] from-40% via-[#010211]/85 to-transparent pb-8 transition-colors duration-300 [.crcle-phone--light_&]:from-[#f7f6f2] [.crcle-phone--light_&]:via-[#f7f6f2]/85">
                 <StatusBar />
-                <div className="mt-[5px] flex justify-center pb-1">
-                  <IconImg src={crcleLogo} className="h-[13px] w-[38px]" />
+                <div className="mt-[5px] flex justify-center pb-[12px]">
+                  <IconImg src={crcleLogo} className="crcle-theme-icon h-[13px] w-[38px]" />
                 </div>
               </div>
             </div>
+
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-2 bottom-2 z-20 h-[6rem] bg-gradient-to-t from-[#010211] from-45% via-[#010211]/92 to-transparent transition-colors duration-300 [.crcle-phone--light_&]:from-[var(--crcle-bg)] [.crcle-phone--light_&]:via-[var(--crcle-bg)]/92"
+            />
 
             <CrclePrimaryDock
               active="profile"
@@ -282,6 +285,10 @@ export function CrcleProfile({
           </div>
 
           <AnimatePresence>
+            {onboardingOpen ? (
+              <ProfileOnboarding onClose={dismissOnboarding} onContinue={dismissOnboarding} />
+            ) : null}
+
             {overlay === "mood" ? (
               <MoodSwitcherModal
                 isIncognito={profile.broadcast.isIncognito}
@@ -299,6 +306,10 @@ export function CrcleProfile({
                     ...p,
                     broadcast: { ...p.broadcast, activeState: id },
                   }));
+                  if (id === "in_the_area") {
+                    setOverlay(null);
+                    onGoToMessages?.();
+                  }
                 }}
                 onClose={() => setOverlay(null)}
               />
@@ -380,6 +391,107 @@ export function CrcleProfile({
   );
 }
 
+function ProfileOnboarding({
+  onClose,
+  onContinue,
+}: {
+  onClose: () => void;
+  onContinue: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.28, ease: EASE }}
+      className="absolute inset-0 z-[55] flex flex-col overflow-hidden rounded-[53px] bg-[rgba(2,3,29,0.4)] backdrop-blur-[9px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profile-onboarding-title"
+    >
+      <div className="flex min-h-0 flex-1 flex-col px-3 pb-11 pt-[112px]">
+        <div className="flex w-full shrink-0 flex-col items-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close onboarding"
+            className="crcle-glass-btn relative flex h-10 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[24px] px-2 py-0.5"
+          >
+            <div className="dock-glass-lens opacity-40" aria-hidden />
+            <IconImg src={closeAddIcon} className="relative z-[1] size-6" />
+          </button>
+
+          <div className="w-full overflow-hidden rounded-[24px] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.2)] backdrop-blur-[12px] [-webkit-backdrop-filter:blur(12px)]">
+            <div className="border-b border-[rgba(255,255,255,0.05)] px-4 py-4">
+              <p
+                id="profile-onboarding-title"
+                className="text-center text-[18px] font-normal leading-[25px] text-white"
+                style={{ fontFamily: FONT }}
+              >
+                Customise Your Profile
+              </p>
+            </div>
+            <div className="flex flex-col gap-5 p-4">
+              <p
+                className="text-center text-[15px] font-normal leading-[22.5px] text-[rgba(255,255,255,0.6)]"
+                style={{ fontFamily: FONT }}
+              >
+                Let's personalize your dashboard! Add widgets to make your profile uniquely yours.
+              </p>
+              <div className="flex h-2 items-center justify-center gap-2">
+                <span className="h-2 w-8 shrink-0 rounded-full bg-[#010211]" aria-hidden />
+                <span className="size-2 shrink-0 rounded-full bg-[rgba(217,217,222,0.5)]" aria-hidden />
+                <span className="size-2 shrink-0 rounded-full bg-[rgba(217,217,222,0.5)]" aria-hidden />
+                <span className="size-2 shrink-0 rounded-full bg-[rgba(217,217,222,0.5)]" aria-hidden />
+              </div>
+            </div>
+            <div className="flex gap-2 border-t border-[rgba(230,230,233,0.1)] p-4">
+              <button
+                type="button"
+                onClick={onContinue}
+                className="flex h-[49px] flex-1 items-center justify-center rounded-full bg-[rgba(230,230,233,0.6)] text-[15px] font-normal leading-[21px] text-[rgba(0,0,0,0.25)] transition hover:brightness-95"
+                style={{ fontFamily: FONT }}
+              >
+                Skip tutorial
+              </button>
+              <button
+                type="button"
+                onClick={onContinue}
+                className="flex h-[49px] flex-1 items-center justify-center rounded-full bg-[#010211] text-[15px] font-normal leading-[21px] text-[#b1b1bc] transition hover:brightness-110"
+                style={{ fontFamily: FONT }}
+              >
+                Get Started
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-auto flex shrink-0 flex-col items-center gap-[18px] pt-10">
+          <p
+            className="w-full text-center text-[14px] font-medium leading-[21px] text-[rgba(247,246,242,0.5)]"
+            style={{ fontFamily: FONT }}
+          >
+            Profile configurations
+          </p>
+          <button
+            type="button"
+            onClick={onContinue}
+            className="flex w-[91px] flex-col items-center gap-[5px] rounded-xl transition hover:bg-white/5"
+          >
+            <IconImg src={crcleLogo} className="h-[17px] w-[49px]" />
+            <span
+              className="w-full text-center text-[11px] leading-[1.1] tracking-[-0.2px] text-[rgba(247,246,242,0.4)]"
+              style={{ fontFamily: FONT }}
+            >
+              Verified Social
+            </span>
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function ProfileMainView({
   profile,
   socialCount,
@@ -419,10 +531,10 @@ function ProfileMainView({
       <div className="flex w-full items-end justify-between px-0">
         <div className="flex flex-col items-start justify-center">
           <div className="flex items-center gap-2">
-            <p className="text-[16px] leading-[1.4] text-[#f7f6f2]" style={{ fontFamily: FONT }}>
+            <p className="text-[16px] leading-[1.4] text-[#f7f6f2] [.crcle-phone--light_&]:text-black" style={{ fontFamily: FONT }}>
               {user.name}
             </p>
-            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[36px] bg-[#f7f6f2] p-1">
+            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[36px] bg-[#f7f6f2] p-1 [.crcle-phone--light_&]:hidden">
               <img
                 alt=""
                 src={raindropBadgeIcon}
@@ -462,12 +574,12 @@ function ProfileMainView({
           className="crcle-glass-btn relative flex items-center justify-center gap-1 self-stretch overflow-hidden rounded-[64px] py-1 pl-2 pr-1"
         >
           <IconImg src={profileMaskGreenIcon} className="relative z-[1] size-6" />
-          <ChevronDown className="relative z-[1] size-5 text-white/50" strokeWidth={1.5} />
+          <ChevronDown className="relative z-[1] size-5 text-white/50 [.crcle-phone--light_&]:text-[rgba(2,3,29,0.45)]" strokeWidth={1.5} />
         </button>
       </div>
 
       {/* Top row: portrait + stats — Figma 851:225673 */}
-      <div className="mx-auto flex h-[255px] w-full gap-4">
+      <div className="mx-auto grid h-[255px] w-full grid-cols-2 gap-4 [.crcle-phone--light_&]:h-[251px]">
         <div className="relative min-w-0 flex-1 overflow-hidden rounded-[24px]">
           <img
             alt=""
@@ -480,10 +592,7 @@ function ProfileMainView({
           </div>
         </div>
 
-        <div
-          className="relative flex min-w-0 flex-1 flex-col gap-3 overflow-hidden rounded-2xl p-3"
-          style={{ background: "linear-gradient(90deg, #1e2939 0%, #1e2939 100%)" }}
-        >
+        <div className="relative flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-2xl bg-[#1e2939] p-3 [.crcle-phone--light_&]:gap-2 [.crcle-phone--light_&]:bg-[#f7f6f2] [.crcle-phone--light_&]:p-2">
           <img
             alt=""
             src={statsDecoIcon}
@@ -492,41 +601,41 @@ function ProfileMainView({
           />
           <div className="relative z-[1] flex min-h-0 flex-1 flex-col gap-1">
             <div className="flex h-[16.5px] items-center gap-1.5">
-              <img alt="" src={eyeWeekIcon} className="size-3.5 object-contain" draggable={false} />
-              <span className="text-[11px] leading-[16.5px] text-[#f7f6f2]" style={{ fontFamily: FONT }}>
+              <img alt="" src={eyeWeekIcon} className="size-3.5 object-contain [.crcle-phone--light_&]:brightness-0" draggable={false} />
+              <span className="text-[11px] leading-[16.5px] text-[#f7f6f2] [.crcle-phone--light_&]:text-[#030426]" style={{ fontFamily: FONT }}>
                 This week
               </span>
             </div>
             <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-xl bg-[rgba(247,246,242,0.2)] p-2">
               <div>
                 <p
-                  className="text-[24px] font-medium leading-[25px] text-[#f7f6f2]"
+                  className="text-[24px] font-medium leading-[25px] text-[#f7f6f2] [.crcle-phone--light_&]:text-[#030426]"
                   style={{ fontFamily: FONT }}
                 >
                   {user.views}
                 </p>
                 <p
-                  className="text-[13px] font-light leading-[1.4] text-[#f7f6f2]"
+                  className="text-[13px] font-light leading-[1.4] text-[#f7f6f2] [.crcle-phone--light_&]:text-[#030426]"
                   style={{ fontFamily: FONT }}
                 >
                   Profile views
                 </p>
               </div>
               <div>
-                <p className="text-[19px] leading-[1.4] text-[#f7f6f2]" style={{ fontFamily: FONT }}>
+                <p className="text-[19px] leading-[1.4] text-[#f7f6f2] [.crcle-phone--light_&]:text-[#030426]" style={{ fontFamily: FONT }}>
                   {user.connections}
                 </p>
                 <p
-                  className="text-[13px] font-light leading-[1.4] text-[#f7f6f2]"
+                  className="text-[13px] font-light leading-[1.4] text-[#f7f6f2] [.crcle-phone--light_&]:text-[#030426]"
                   style={{ fontFamily: FONT }}
                 >
                   connections
                 </p>
               </div>
               <div className="flex items-center gap-1">
-                <img alt="" src={trendingUpIcon} className="size-3.5 object-contain" draggable={false} />
+                <img alt="" src={trendingUpIcon} className="size-3.5 object-contain [.crcle-phone--light_&]:brightness-0" draggable={false} />
                 <span
-                  className="text-[11px] font-light leading-[1.4] text-[#f7f6f2]"
+                  className="text-[11px] font-light leading-[1.4] text-[#f7f6f2] [.crcle-phone--light_&]:text-[#030426]"
                   style={{ fontFamily: FONT }}
                 >
                   +5 this week
@@ -535,12 +644,12 @@ function ProfileMainView({
             </div>
           </div>
           <div className="relative z-[1] flex flex-col gap-2">
-            <div className="flex items-start justify-between text-[11px] text-[#f7f6f2]">
+            <div className="flex items-start justify-between text-[11px] text-[#f7f6f2] [.crcle-phone--light_&]:text-black">
               <div style={{ fontFamily: FONT }}>
                 <p className="leading-[1.2]">PROFILE STRENGTH</p>
                 <p className="font-medium leading-[1.2]">Intermediate</p>
               </div>
-              <p className="font-light leading-[1.2]" style={{ fontFamily: FONT }}>
+              <p className="font-light leading-[1.2] [.crcle-phone--light_&]:text-[#030426]" style={{ fontFamily: FONT }}>
                 {user.strengthPct}%
               </p>
             </div>
@@ -548,13 +657,13 @@ function ProfileMainView({
               <img
                 alt=""
                 src={strengthTrackIcon}
-                className="absolute inset-x-0.5 top-1/2 h-1 w-[calc(100%-4px)] -translate-y-1/2 object-fill"
+                className="absolute inset-x-0.5 top-1/2 h-1 w-[calc(100%-4px)] -translate-y-1/2 object-fill [.crcle-phone--light_&]:brightness-0 [.crcle-phone--light_&]:opacity-25"
                 draggable={false}
               />
               <img
                 alt=""
                 src={strengthFillIcon}
-                className="absolute left-0.5 top-1/2 h-1 -translate-y-1/2 object-fill"
+                className="absolute left-0.5 top-1/2 h-1 -translate-y-1/2 object-fill [.crcle-phone--light_&]:brightness-0"
                 style={{ width: `${user.strengthPct}%` }}
                 draggable={false}
               />
@@ -807,7 +916,7 @@ function ProfileMainView({
                 <button
                   type="button"
                   onClick={onOpenEducation}
-                  className="flex min-w-0 flex-col rounded-[20px] border border-[rgba(247,246,242,0.4)] bg-[rgba(247,246,242,0.4)] p-[9px] text-left shadow-[0_4px_4px_rgba(0,0,0,0.25)]"
+                  className="flex min-w-0 flex-col rounded-[20px] border border-[rgba(247,246,242,0.4)] bg-gradient-to-b from-[rgba(1,2,17,0.6)] to-[rgba(170,194,240,0.6)] p-[9px] text-left shadow-[0_4px_4px_rgba(0,0,0,0.25)] [.crcle-phone--light_&]:border-[#f7f6f2] [.crcle-phone--light_&]:from-[rgba(0,85,255,0.3)] [.crcle-phone--light_&]:to-[rgba(170,194,240,0.3)] [.crcle-phone--light_&]:shadow-none"
                 >
                   <div className="flex w-full flex-col items-center gap-3 rounded-2xl bg-[#f7f6f2] p-2">
                     <div className="flex w-full items-center gap-1">
@@ -866,7 +975,7 @@ function ProfileMainView({
       <button
         type="button"
         onClick={onOpenSocials}
-        className="mx-auto flex w-full flex-col gap-2 rounded-[24px] border border-[rgba(247,246,242,0.2)] bg-[rgba(247,246,242,0.05)] p-2 text-left"
+        className="mx-auto flex w-full flex-col gap-2 rounded-[24px] border border-[rgba(247,246,242,0.2)] bg-[rgba(247,246,242,0.05)] p-2 text-left [.crcle-phone--light_&]:border-transparent [.crcle-phone--light_&]:bg-[#020217]"
       >
         <div className="flex w-full items-start justify-between">
           <div className="flex items-center gap-1 pl-1 pt-0.5">
@@ -898,12 +1007,12 @@ function ProfileMainView({
       {/* Add widget — Figma 851:225829 */}
       <button
         type="button"
-        className="relative mx-auto flex w-full items-center justify-center rounded-[24px] border border-[#f7f6f2] p-3"
+        className="relative mx-auto flex w-full items-center justify-center rounded-[24px] border border-[#f7f6f2] p-3 [.crcle-phone--light_&]:border-[#030426] [.crcle-phone--light_&]:bg-[#fefefe]"
       >
-        <span className="absolute left-[7px] top-1/2 flex -translate-y-1/2 items-center justify-center rounded-[36px] bg-[rgba(247,246,242,0.4)] px-3 py-1">
+        <span className="absolute left-[7px] top-1/2 flex -translate-y-1/2 items-center justify-center rounded-[36px] bg-[rgba(247,246,242,0.4)] px-3 py-1 [.crcle-phone--light_&]:bg-[#030426]">
           <img alt="" src={locusPlusIcon} className="size-4 object-contain" draggable={false} />
         </span>
-        <span className="w-full text-center text-[13px] leading-[1.4] text-[#f7f6f2]" style={{ fontFamily: FONT }}>
+        <span className="w-full text-center text-[13px] leading-[1.4] text-[#f7f6f2] [.crcle-phone--light_&]:text-[#030422]" style={{ fontFamily: FONT }}>
           Add widget
         </span>
       </button>
@@ -1235,7 +1344,7 @@ function EmptyWidgetCard({
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[rgba(177,177,188,0.2)] bg-transparent text-left transition hover:bg-white/[0.02] ${
+      className={`relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[rgba(177,177,188,0.2)] bg-transparent text-left transition hover:bg-white/[0.02] [.crcle-phone--light_&]:border-[rgba(3,4,38,0.18)] [.crcle-phone--light_&]:hover:bg-black/[0.03] ${
         padY === "comfortable" ? "px-3 py-4" : "p-3"
       }`}
     >
@@ -1245,7 +1354,7 @@ function EmptyWidgetCard({
             <img
               alt=""
               src={icon}
-              className="absolute inset-0 size-full max-w-none object-contain"
+              className="absolute inset-0 size-full max-w-none object-contain [.crcle-phone--light_&]:brightness-0"
               draggable={false}
             />
           </span>
@@ -1253,14 +1362,14 @@ function EmptyWidgetCard({
             <img
               alt=""
               src={emptyPlusIcon}
-              className="absolute inset-0 size-full max-w-none object-contain brightness-0 invert"
+              className="absolute inset-0 size-full max-w-none object-contain brightness-0 invert [.crcle-phone--light_&]:invert-0"
               draggable={false}
             />
           </span>
         </div>
 
         <div className="flex w-full flex-col items-start gap-2 leading-[1.4]">
-          <div className="flex w-full flex-col items-start text-[#f7f6f2]">
+          <div className="flex w-full flex-col items-start text-[#f7f6f2] [.crcle-phone--light_&]:text-[#030426]">
             <p
               className="w-full text-[16px] font-medium leading-[1.4]"
               style={{ fontFamily: FONT }}
@@ -1277,7 +1386,7 @@ function EmptyWidgetCard({
             ) : null}
           </div>
           <p
-            className="w-full text-[11px] font-normal leading-[1.4] text-[rgba(247,246,242,0.5)]"
+            className="w-full text-[11px] font-normal leading-[1.4] text-[rgba(247,246,242,0.5)] [.crcle-phone--light_&]:text-[rgba(3,4,38,0.5)]"
             style={{ fontFamily: FONT }}
           >
             {tip}
@@ -2260,14 +2369,14 @@ function SheetShell({
 
 function StatusBar() {
   return (
-    <div className="relative z-30 mx-auto flex h-[62px] w-[84%] shrink-0 items-end justify-between px-2 pb-[10px] text-[#f7f6f2]">
+    <div className="relative z-30 mx-auto flex h-[62px] w-[84%] shrink-0 items-end justify-between px-2 pb-[10px] text-[#f7f6f2] [.crcle-phone--light_&]:text-black">
       <span
         className="text-[17px] font-semibold leading-[22px]"
         style={{ fontFamily: "SF Pro, system-ui, -apple-system, sans-serif" }}
       >
         9:41
       </span>
-      <div className="flex items-center gap-[7px] pb-0.5">
+      <div className="crcle-theme-icon flex items-center gap-[7px] pb-0.5">
         <IconImg src={cellularIcon} className="h-[12.226px] w-[19.2px]" />
         <IconImg src={wifiIcon} className="h-[12.328px] w-[17.142px]" />
         <IconImg src={batteryIcon} className="h-[13px] w-[27.328px]" />
